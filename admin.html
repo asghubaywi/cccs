@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة الإدارة - نظام مستحقات المختبرات</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "Noto Sans", "Liberation Sans", Arial, sans-serif;
+        }
+        .login-container {
+            max-width: 400px;
+            margin: 100px auto;
+        }
+        .admin-container {
+            display: none;
+            padding: 20px;
+        }
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .form-control:focus {
+            border-color: #0d6efd;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+    </style>
+</head>
+<body>
+    <!-- نموذج تسجيل الدخول -->
+    <div id="loginForm" class="login-container">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="text-center mb-4">تسجيل الدخول</h2>
+                <form onsubmit="login(event)">
+                    <div class="mb-3">
+                        <label for="email" class="form-label">البريد الإلكتروني</label>
+                        <input type="email" class="form-control" id="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">كلمة المرور</label>
+                        <input type="password" class="form-control" id="password" required>
+                    </div>
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-box-arrow-in-right"></i> تسجيل الدخول
+                        </button>
+                        <a href="/" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-right"></i> العودة للصفحة الرئيسية
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- لوحة الإدارة -->
+    <div id="adminPanel" class="admin-container">
+        <div class="container">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>لوحة الإدارة</h1>
+                <div>
+                    <a href="/" class="btn btn-outline-primary me-2">
+                        <i class="bi bi-house"></i> الصفحة الرئيسية
+                    </a>
+                    <button onclick="logout()" class="btn btn-outline-danger">
+                        <i class="bi bi-box-arrow-right"></i> تسجيل الخروج
+                    </button>
+                </div>
+            </div>
+
+            <!-- نموذج إضافة عميل -->
+            <div class="card">
+                <div class="card-body">
+                    <h3 class="card-title mb-4">إضافة عميل جديد</h3>
+                    <form id="addClientForm" onsubmit="addClient(event)">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="clientName" class="form-label">اسم العميل</label>
+                                <input type="text" id="clientName" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="labSelect" class="form-label">المختبر</label>
+                                <select id="labSelect" class="form-select" required>
+                                    <option value="">اختر المختبر...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="amount" class="form-label">المبلغ</label>
+                                <input type="number" id="amount" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="status" class="form-label">الحالة</label>
+                                <select id="status" class="form-select" required>
+                                    <option value="pending">قيد المعالجة</option>
+                                    <option value="completed">مكتمل</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="bi bi-plus-circle"></i> إضافة عميل
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script>
+        // تهيئة Supabase
+        const { createClient } = supabase;
+        const supabaseClient = createClient(
+            'https://xguxveuvqnejmdwryhjc.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndXh2ZXV2cW5lam1kd3J5aGpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ0MzQ2MTQsImV4cCI6MjA1MDAxMDYxNH0.RIbDi05WTn77ROJBoOgmtAR2G06_5tnhYF0adJ1MU5Q'
+        );
+
+        // التحقق من حالة تسجيل الدخول عند تحميل الصفحة
+        document.addEventListener('DOMContentLoaded', async () => {
+            const { data: { user }, error } = await supabaseClient.auth.getUser();
+            if (user) {
+                showAdminPanel();
+                loadLabs();
+            }
+        });
+
+        // تسجيل الدخول
+        async function login(event) {
+            event.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const { data, error } = await supabaseClient.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                });
+
+                if (error) throw error;
+
+                showAdminPanel();
+                loadLabs();
+            } catch (error) {
+                console.error('Error logging in:', error);
+                alert('خطأ في تسجيل الدخول: ' + error.message);
+            }
+        }
+
+        // تسجيل الخروج
+        async function logout() {
+            try {
+                const { error } = await supabaseClient.auth.signOut();
+                if (error) throw error;
+                
+                showLoginForm();
+            } catch (error) {
+                console.error('Error logging out:', error);
+                alert('خطأ في تسجيل الخروج: ' + error.message);
+            }
+        }
+
+        // عرض لوحة الإدارة
+        function showAdminPanel() {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('adminPanel').style.display = 'block';
+        }
+
+        // عرض نموذج تسجيل الدخول
+        function showLoginForm() {
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('adminPanel').style.display = 'none';
+        }
+
+        // تحميل قائمة المختبرات
+        async function loadLabs() {
+            try {
+                const { data: labs, error } = await supabaseClient
+                    .from('labs')
+                    .select('*')
+                    .order('name');
+
+                if (error) throw error;
+
+                const labSelect = document.getElementById('labSelect');
+                labSelect.innerHTML = '<option value="">اختر المختبر...</option>';
+                
+                labs.forEach(lab => {
+                    const option = document.createElement('option');
+                    option.value = lab.id;
+                    option.textContent = lab.name;
+                    labSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading labs:', error);
+                alert('خطأ في تحميل قائمة المختبرات: ' + error.message);
+            }
+        }
+
+        // إضافة عميل جديد
+        async function addClient(event) {
+            event.preventDefault();
+            
+            try {
+                const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+                if (userError) throw userError;
+
+                if (!user) {
+                    alert('يجب تسجيل الدخول أولاً');
+                    return;
+                }
+
+                const formData = {
+                    name: document.getElementById('clientName').value,
+                    lab_id: parseInt(document.getElementById('labSelect').value),
+                    amount: parseInt(document.getElementById('amount').value),
+                    status: document.getElementById('status').value
+                };
+
+                const { data, error } = await supabaseClient
+                    .from('clients')
+                    .insert([formData]);
+
+                if (error) throw error;
+
+                alert('تم إضافة العميل بنجاح');
+                document.getElementById('addClientForm').reset();
+            } catch (error) {
+                console.error('Error adding client:', error);
+                alert('خطأ في إضافة العميل: ' + error.message);
+            }
+        }
+    </script>
+    
+    <!-- Footer -->
+    <footer class="bg-white py-4 mt-5 border-top">
+        <div class="container text-center">
+            <p class="mb-1">قسم عمليات الفسح المركزي</p>
+            <a href="mailto:cccs@sfda.gov.sa" class="text-decoration-none">cccs@sfda.gov.sa</a>
+        </div>
+    </footer>
+</body>
+</html>
