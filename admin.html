@@ -234,6 +234,24 @@
                 alert('خطأ في إضافة العميل: ' + error.message);
             }
         }
+
+        // تحديث حالة الدفعة
+        async function markAsPaid(paymentId) {
+            try {
+                const response = await fetch(`/mark-as-paid/${paymentId}`, {
+                    method: 'POST'
+                });
+                if (response.ok) {
+                    alert('تم تحديث حالة الدفعة بنجاح');
+                    loadPayments(); // تحديث القائمة
+                } else {
+                    alert('حدث خطأ أثناء تحديث حالة الدفعة');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('حدث خطأ في النظام');
+            }
+        }
     </script>
     
     <!-- Footer -->

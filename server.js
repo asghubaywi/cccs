@@ -90,6 +90,23 @@ app.put('/clients/:id', async (req, res) => {
     }
 });
 
+// مسار تحديث حالة الدفعة
+app.post('/mark-as-paid/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { data, error } = await supabase
+            .from('payments')
+            .update({ status: 'تم التحصيل' })
+            .eq('id', id);
+
+        if (error) throw error;
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Error marking payment as paid:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // الحصول على إحصائيات العملاء
 app.get('/statistics', async (req, res) => {
     try {
