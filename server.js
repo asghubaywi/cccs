@@ -96,7 +96,10 @@ app.post('/mark-as-paid/:id', async (req, res) => {
         const { id } = req.params;
         const { data, error } = await supabase
             .from('payments')
-            .update({ status: 'تم التحصيل' })
+            .update({ 
+                status: 'تم التحصيل',
+                paid_date: new Date().toISOString()
+            })
             .eq('id', id);
 
         if (error) throw error;
