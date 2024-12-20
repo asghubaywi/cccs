@@ -137,8 +137,8 @@
 
             try {
                 const { data, error } = await supabaseClient.auth.signInWithPassword({
-                    email: email,
-                    password: password
+                    email,
+                    password
                 });
 
                 if (error) throw error;
