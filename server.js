@@ -1,10 +1,12 @@
 const express = require('express');
-const app = express();
-const path = require('path');
 const cors = require('cors');
+const path = require('path');
+
+const app = express();
+const PORT = process.env.PORT || 10000;
 
 // تعيين المجلد الحالي كمجلد ثابت مع تحديد أنواع MIME
-app.use(express.static(__dirname, {
+app.use(express.static(path.join(__dirname), {
     setHeaders: (res, path) => {
         if (path.endsWith('.svg')) {
             res.setHeader('Content-Type', 'image/svg+xml');
@@ -12,8 +14,8 @@ app.use(express.static(__dirname, {
     }
 }));
 
-// تمكين CORS
 app.use(cors());
+app.use(express.json());
 
 // التعامل مع الطلبات إلى الصفحة الرئيسية
 app.get('/', (req, res) => {
@@ -26,7 +28,6 @@ app.get('/admin', (req, res) => {
 });
 
 // تشغيل السيرفر
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-    console.log(`Server is running on port ${port}`);
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
 });
