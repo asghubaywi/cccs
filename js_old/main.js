@@ -100,7 +100,7 @@ function displayClientsGrid(clientsToDisplay) {
                             ${getStatusText(client.status)}
                         </span>
                         <span class="badge lab-badge bg-info">
-                            ${client.labs?.name || ''}
+                            ${client.labs.name}
                         </span>
                     </div>
                     
@@ -108,29 +108,22 @@ function displayClientsGrid(clientsToDisplay) {
                     
                     <div class="client-info mt-auto">
                         <div class="amount mb-2">
-                            <i class="bi bi-cash-stack"></i>
-                            <span class="number">${formatNumber(client.amount)}</span> ريال
+                            <i class="fa-solid fa-coins"></i>
+                            ${formatNumber(client.amount)} ريال
                         </div>
                         
                         <div class="date mb-3">
-                            <i class="bi bi-calendar"></i>
-                            <span class="date">${formatDate(client.created_at)}</span>
+                            <i class="fa-solid fa-calendar"></i>
+                            ${formatDate(client.created_at)}
                         </div>
 
-                        <div class="d-flex gap-2">
-                            ${client.status === 'pending' ? `
-                                <button class="btn btn-success btn-xs" 
-                                        onclick="updateClientStatus(${client.id}, 'completed')">
-                                    <i class="bi bi-check-circle"></i>
-                                    تأكيد الدفع
-                                </button>
-                            ` : ''}
-                            <button class="btn btn-outline-primary btn-xs" 
-                                    onclick="copyMessageToClipboard('${client.name}', '${client.labs?.name || ''}', ${client.amount})">
-                                <i class="bi bi-clipboard fs-6"></i>
-                                نسخ الرسالة
+                        ${client.status === 'pending' ? `
+                            <button class="btn btn-success btn-sm w-100" 
+                                    onclick="updateClientStatus(${client.id}, 'completed')">
+                                <i class="fa-solid fa-check-circle"></i>
+                                تأكيد الدفع
                             </button>
-                        </div>
+                        ` : ''}
                     </div>
                 </div>
             </div>
@@ -139,6 +132,7 @@ function displayClientsGrid(clientsToDisplay) {
         container.appendChild(col);
     });
 
+    // إظهار عرض البطاقات وإخفاء الجدول
     document.getElementById('gridView').style.display = 'flex';
     document.getElementById('tableView').style.display = 'none';
 }
@@ -173,41 +167,30 @@ function displayClientsTable(clientsToDisplay) {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${client.name}</td>
-            <td>${client.labs?.name || ''}</td>
-            <td class="amount">
-                <span class="number">${formatNumber(client.amount)}</span> ريال
-            </td>
+            <td>${client.labs.name}</td>
+            <td>${formatNumber(client.amount)} ريال</td>
             <td>
                 <span class="badge bg-${getStatusBadgeColor(client.status)}">
                     ${getStatusText(client.status)}
                 </span>
             </td>
-            <td class="date">
-                <span class="date">${formatDate(client.created_at)}</span>
-            </td>
+            <td>${formatDate(client.created_at)}</td>
             <td>
-                <div class="btn-group btn-group-xs">
-                    ${client.status === 'pending' ? `
-                        <button class="btn btn-success btn-xs" 
-                                onclick="updateClientStatus(${client.id}, 'completed')"
-                                title="تأكيد الدفع">
-                            <i class="bi bi-check-circle"></i>
-                            تأكيد الدفع
-                        </button>
-                    ` : ''}
-                    <button class="btn btn-outline-primary btn-xs" 
-                            onclick="copyMessageToClipboard('${client.name}', '${client.labs?.name || ''}', ${client.amount})"
-                            title="نسخ الرسالة">
-                        <i class="bi bi-clipboard"></i>
+                ${client.status === 'pending' ? `
+                    <button class="btn btn-success btn-sm" 
+                            onclick="updateClientStatus(${client.id}, 'completed')">
+                        <i class="bi bi-check-circle"></i>
+                        تأكيد الدفع
                     </button>
-                </div>
+                ` : ''}
             </td>
         `;
         tbody.appendChild(row);
     });
 
+    // إظهار الجدول وإخفاء عرض البطاقات
     document.getElementById('gridView').style.display = 'none';
-    tableView.style.display = 'block';
+    document.getElementById('tableView').style.display = 'block';
 }
 
 // عرض رسالة عدم وجود بيانات
@@ -308,30 +291,94 @@ async function updateClientStatus(clientId, newStatus) {
 }
 
 // تحديث الإحصائيات
-async function updateStatistics(clientsData) {
-    if (!clientsData) return;
+function updateStatistics(clientsData) {
+    // إجمالي العملاء
+    const totalClientsElement = document.getElementById('totalClients');
+    if (totalClientsElement) {
+        totalClientsElement.textContent = new Intl.NumberFormat('en-US').format(clientsData.length);
+    }
 
-    // حساب إجمالي المبالغ
+    // المدفوعات المكتملة
+    const completedPayments = clientsData.filter(client => client.status === 'completed').length;
+    const completedPaymentsElement = document.getElementById('completedPayments');
+    if (completedPaymentsElement) {
+        completedPaymentsElement.textContent = new Intl.NumberFormat('en-US').format(completedPayments);
+    }
+
+    // المدفوعات قيد الانتظار
+    const pendingPayments = clientsData.filter(client => client.status === 'pending').length;
+    const pendingPaymentsElement = document.getElementById('pendingPayments');
+    if (pendingPaymentsElement) {
+        pendingPaymentsElement.textContent = new Intl.NumberFormat('en-US').format(pendingPayments);
+    }
+
+    // إجمالي المبالغ
     const totalAmount = clientsData.reduce((sum, client) => sum + (parseFloat(client.amount) || 0), 0);
-    document.getElementById('totalAmount').innerHTML = formatNumber(totalAmount) + ' ريال';
-
-    // عدد العملاء
-    const totalClients = clientsData.length;
-    document.getElementById('totalClients').innerHTML = formatNumber(totalClients);
-
-    // عدد المعاملات المكتملة
-    const completedTransactions = clientsData.filter(client => client.status === 'completed').length;
-    document.getElementById('completedTransactions').innerHTML = formatNumber(completedTransactions);
-
-    // عدد المعاملات المعلقة
-    const pendingTransactions = clientsData.filter(client => client.status === 'pending').length;
-    document.getElementById('pendingTransactions').innerHTML = formatNumber(pendingTransactions);
+    const totalAmountElement = document.getElementById('totalAmount');
+    if (totalAmountElement) {
+        totalAmountElement.textContent = formatNumber(totalAmount);
+    }
 }
 
-// عرض رسالة منبثقة
+// تحديث إحصائيات لوحة الإدارة
+function updateAdminStatistics(clientsData) {
+    // إجمالي العملاء
+    const totalClientsElement = document.getElementById('totalAdminClients');
+    if (totalClientsElement) {
+        totalClientsElement.textContent = new Intl.NumberFormat('en-US').format(clientsData.length);
+    }
+
+    // المدفوعات المكتملة
+    const completedPayments = clientsData.filter(client => client.status === 'completed').length;
+    const completedPaymentsElement = document.getElementById('completedAdminPayments');
+    if (completedPaymentsElement) {
+        completedPaymentsElement.textContent = new Intl.NumberFormat('en-US').format(completedPayments);
+    }
+
+    // المدفوعات قيد الانتظار
+    const pendingPayments = clientsData.filter(client => client.status === 'pending').length;
+    const pendingPaymentsElement = document.getElementById('pendingAdminPayments');
+    if (pendingPaymentsElement) {
+        pendingPaymentsElement.textContent = new Intl.NumberFormat('en-US').format(pendingPayments);
+    }
+
+    // المدفوعات الملغاة
+    const cancelledPayments = clientsData.filter(client => client.status === 'cancelled').length;
+    const cancelledPaymentsElement = document.getElementById('cancelledAdminPayments');
+    if (cancelledPaymentsElement) {
+        cancelledPaymentsElement.textContent = new Intl.NumberFormat('en-US').format(cancelledPayments);
+    }
+
+    // إجمالي المبالغ
+    const totalAmount = clientsData.reduce((sum, client) => sum + (parseFloat(client.amount) || 0), 0);
+    const totalAmountElement = document.getElementById('totalAdminAmount');
+    if (totalAmountElement) {
+        totalAmountElement.textContent = formatNumber(totalAmount);
+    }
+
+    // إجمالي المبالغ المكتملة
+    const completedAmount = clientsData
+        .filter(client => client.status === 'completed')
+        .reduce((sum, client) => sum + (parseFloat(client.amount) || 0), 0);
+    const completedAmountElement = document.getElementById('completedAdminAmount');
+    if (completedAmountElement) {
+        completedAmountElement.textContent = formatNumber(completedAmount);
+    }
+
+    // إجمالي المبالغ قيد الانتظار
+    const pendingAmount = clientsData
+        .filter(client => client.status === 'pending')
+        .reduce((sum, client) => sum + (parseFloat(client.amount) || 0), 0);
+    const pendingAmountElement = document.getElementById('pendingAdminAmount');
+    if (pendingAmountElement) {
+        pendingAmountElement.textContent = formatNumber(pendingAmount);
+    }
+}
+
+// إظهار رسالة للمستخدم
 function showToast(type, message) {
     const toast = document.createElement('div');
-    toast.className = `toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0 position-fixed bottom-0 end-0 m-3`;
+    toast.className = `toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0`;
     toast.setAttribute('role', 'alert');
     toast.setAttribute('aria-live', 'assertive');
     toast.setAttribute('aria-atomic', 'true');
@@ -345,12 +392,16 @@ function showToast(type, message) {
         </div>
     `;
     
-    document.body.appendChild(toast);
-    const bsToast = new bootstrap.Toast(toast, { delay: 3000 });
+    const container = document.createElement('div');
+    container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+    container.appendChild(toast);
+    document.body.appendChild(container);
+    
+    const bsToast = new bootstrap.Toast(toast);
     bsToast.show();
     
     toast.addEventListener('hidden.bs.toast', () => {
-        document.body.removeChild(toast);
+        container.remove();
     });
 }
 
@@ -373,64 +424,65 @@ function toggleView(view) {
     displayClients(clients);
 }
 
-// توليد الصيغة التلقائية للرسالة
-function generateMessage(clientName, labName, amount) {
-    const formattedAmount = formatNumber(amount);
-    return `السادة / ${clientName} المحترمين
-
-إشارة إلى الإرساليات الخاصة بكم والتي تم سحب عينات منها لغرض التحليل، نود إفادتكم بعدم سداد المقابل المالي لـ ${labName}. لذا نرجو منكم الإسراع في تسديد تكاليف التحاليل وتزويدنا بإثبات السداد ${formattedAmount} ريال، ليتم استكمال الإجراءات اللازمة. كما نحيطكم علماً بأنه سيتم ربط عمليات الفسح المستقبلية للشحنات الواردة بإرفاق ما يثبت سداد المستحقات.
-
-وتقبلوا تحياتنا،
-قسم عمليات الفسح المركزي`;
+// تبديل الوضع
+function toggleTheme() {
+    const html = document.documentElement;
+    const currentTheme = html.getAttribute('data-bs-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+    
+    // تحديث شكل الأزرار حسب المظهر
+    updateButtonStyles(newTheme);
 }
 
-// نسخ الرسالة للحافظة
-async function copyMessageToClipboard(clientName, labName, amount) {
-    const message = generateMessage(clientName, labName, amount);
-    try {
-        await navigator.clipboard.writeText(message);
-        showToast('success', 'تم نسخ الرسالة بنجاح!');
-    } catch (err) {
-        console.error('فشل نسخ الرسالة:', err);
-        showToast('error', 'حدث خطأ أثناء نسخ الرسالة');
+// تحديث أيقونة الوضع
+function updateThemeIcon(theme) {
+    const icon = document.getElementById('themeIcon');
+    if (icon) {
+        icon.className = theme === 'dark' ? 'bi bi-sun' : 'bi bi-moon-stars';
     }
 }
 
-// اختبار صيغة الرسالة
-async function testMessage() {
-    const clientName = document.getElementById('testClientName').value;
-    const labName = document.getElementById('testLabName').value;
-    const amount = document.getElementById('testAmount').value;
-    
-    if (!clientName || !labName || !amount) {
-        showToast('error', 'الرجاء ملء جميع الحقول');
-        return;
-    }
-    
-    await copyMessageToClipboard(clientName, labName, amount);
+// تحميل تفضيل الوضع
+function loadThemePreference() {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    setTheme(savedTheme);
 }
 
-// تنسيق التاريخ
-function formatDate(date) {
-    if (!date) return '';
-    const d = new Date(date);
-    return d.toLocaleString('en-US', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-    }).replace(/,/g, '');
+// تعيين المظهر
+function setTheme(theme) {
+    document.documentElement.setAttribute('data-bs-theme', theme);
+    updateThemeIcon(theme);
+    updateButtonStyles(theme);
+}
+
+// تحديث أنماط الأزرار
+function updateButtonStyles(theme) {
+    const themeBtn = document.querySelector('[onclick="toggleTheme()"]');
+    if (themeBtn) {
+        themeBtn.className = `btn btn-outline-${theme === 'dark' ? 'light' : 'secondary'}`;
+    }
 }
 
 // تنسيق الأرقام
 function formatNumber(number) {
-    if (number === null || number === undefined) return '0';
     return new Intl.NumberFormat('en-US', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
     }).format(number);
+}
+
+// تنسيق التاريخ
+function formatDate(date) {
+    return new Date(date).toLocaleDateString('en-GB', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+    }).replace(',', '');
 }
 
 // الحصول على لون الحالة
@@ -453,76 +505,5 @@ function getStatusText(status) {
     }
 }
 
-// تبديل الوضع
-function toggleTheme() {
-    const html = document.documentElement;
-    const currentTheme = html.getAttribute('data-bs-theme');
-    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-    
-    setTheme(newTheme);
-    localStorage.setItem('theme', newTheme);
-}
-
-// تحديث أيقونة الوضع
-function updateThemeIcon(theme) {
-    const icon = document.getElementById('themeIcon');
-    if (icon) {
-        icon.className = theme === 'dark' ? 'bi bi-sun' : 'bi bi-moon-stars';
-    }
-}
-
-// تحميل تفضيل الوضع
-function loadThemePreference() {
-    const savedTheme = localStorage.getItem('theme') || 'light';
-    const systemTheme = savedTheme === 'light' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-bs-theme', systemTheme);
-    updateThemeIcon(systemTheme);
-}
-
 // تحميل البيانات عند فتح الصفحة
-document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        await initialize();
-        const { data: clients, error } = await supabaseClient
-            .from('clients')
-            .select('*, labs(*)');
-        
-        if (error) throw error;
-        
-        if (clients) {
-            updateStatistics(clients);
-            displayClients(clients);
-        }
-    } catch (error) {
-        console.error('Error loading data:', error);
-    }
-});
-
-// تغيير الوضع
-function setTheme(theme) {
-    document.documentElement.setAttribute('data-bs-theme', theme);
-    localStorage.setItem('theme', theme);
-    updateThemeIcon(theme);
-    
-    // إضافة تأثيرات حركية عند تغيير الوضع
-    document.body.style.opacity = '0';
-    setTimeout(() => {
-        document.body.style.opacity = '1';
-    }, 200);
-    
-    // تحديث الأيقونات حسب الوضع
-    const icons = {
-        light: 'fa-sun',
-        dark: 'fa-moon'
-    };
-    
-    document.querySelectorAll('.theme-icon').forEach(icon => {
-        icon.className = `theme-icon fa-solid ${icons[theme]}`;
-    });
-}
-
-// إضافة مراقب للأخطاء
-window.onerror = function(msg, url, lineNo, columnNo, error) {
-    console.error('Error: ' + msg + '\nURL: ' + url + '\nLine: ' + lineNo + '\nColumn: ' + columnNo + '\nError object: ' + JSON.stringify(error));
-    return false;
-};
+document.addEventListener('DOMContentLoaded', initialize);

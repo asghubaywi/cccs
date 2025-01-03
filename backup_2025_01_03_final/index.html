@@ -9,7 +9,7 @@
     <link href="css/styles.css" rel="stylesheet">
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg">
+    <nav class="navbar navbar-expand-lg sticky-top">
         <div class="container">
             <a class="navbar-brand" href="#">نظام إدارة المدفوعات</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -21,9 +21,11 @@
                         <a class="nav-link" href="admin.html">لوحة الإدارة</a>
                     </li>
                 </ul>
-                <button class="btn btn-outline-primary" onclick="toggleTheme()">
-                    <i class="bi bi-moon-stars" id="themeIcon"></i>
-                </button>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-outline-light" onclick="toggleTheme()">
+                        <i class="bi bi-moon-stars" id="themeIcon"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </nav>
@@ -160,7 +162,7 @@
                 </div>
 
                 <!-- عرض القائمة -->
-                <div id="tableView" class="table-responsive" style="display: none;">
+                <div id="tableView" class="table-responsive">
                     <table class="table table-hover">
                         <thead>
                             <tr>

@@ -83,9 +83,18 @@ function displayClientsGrid(clientsToDisplay) {
         const col = document.createElement('div');
         col.className = 'col-md-4 col-lg-3';
         
+        const statusImage = client.status === 'completed' ? 'completed.svg' : 
+                           client.status === 'pending' ? 'pending.svg' : '';
+        
         col.innerHTML = `
             <div class="card client-card h-100">
                 <div class="card-body d-flex flex-column">
+                    ${statusImage ? `
+                        <div class="text-center mb-3">
+                            <img src="images/${statusImage}" alt="${getStatusText(client.status)}" 
+                                 class="status-image" style="width: 60px; height: 60px;">
+                        </div>
+                    ` : ''}
                     <div class="badges mb-3">
                         <span class="badge status-badge bg-${getStatusBadgeColor(client.status)}">
                             ${getStatusText(client.status)}
@@ -99,19 +108,19 @@ function displayClientsGrid(clientsToDisplay) {
                     
                     <div class="client-info mt-auto">
                         <div class="amount mb-2">
-                            <i class="bi bi-currency-dollar"></i>
+                            <i class="fa-solid fa-coins"></i>
                             ${formatNumber(client.amount)} ريال
                         </div>
                         
                         <div class="date mb-3">
-                            <i class="bi bi-calendar3"></i>
+                            <i class="fa-solid fa-calendar"></i>
                             ${formatDate(client.created_at)}
                         </div>
 
                         ${client.status === 'pending' ? `
                             <button class="btn btn-success btn-sm w-100" 
                                     onclick="updateClientStatus(${client.id}, 'completed')">
-                                <i class="bi bi-check-circle"></i>
+                                <i class="fa-solid fa-check-circle"></i>
                                 تأكيد الدفع
                             </button>
                         ` : ''}
@@ -188,12 +197,12 @@ function displayClientsTable(clientsToDisplay) {
 function showNoDataMessage(container) {
     container.innerHTML = `
         <div class="col-12">
-            <div class="no-data-message">
-                <i class="bi bi-inbox"></i>
+            <div class="no-data-message text-center">
+                <img src="images/empty-state.svg" alt="لا توجد بيانات" class="img-fluid mb-4" style="max-width: 300px;">
                 <h3>لا توجد بيانات للعرض</h3>
-                <p>لم يتم العثور على أي عملاء يطابقون معايير البحث</p>
-                <button class="btn btn-primary" onclick="resetSearch()">
-                    <i class="bi bi-arrow-clockwise"></i>
+                <p class="text-muted">لم يتم العثور على أي عملاء يطابقون معايير البحث</p>
+                <button class="btn btn-primary mt-3" onclick="resetSearch()">
+                    <i class="fa-solid fa-rotate"></i>
                     عرض جميع العملاء
                 </button>
             </div>
@@ -202,21 +211,38 @@ function showNoDataMessage(container) {
 }
 
 // البحث في العملاء
-function searchClients(event) {
-    event.preventDefault();
+async function searchClients(event) {
+    if (event) event.preventDefault();
     
-    const searchName = document.getElementById('searchName').value.toLowerCase();
-    const searchLab = document.getElementById('searchLab').value;
-    const searchStatus = document.getElementById('searchStatus').value;
-    const searchAmount = document.getElementById('searchAmount').value;
+    const name = document.getElementById('searchName').value.toLowerCase();
+    const labId = document.getElementById('searchLab').value;
+    const status = document.getElementById('searchStatus').value;
+    const amount = document.getElementById('searchAmount').value;
 
-    const filteredClients = clients.filter(client => {
-        const nameMatch = !searchName || client.name.toLowerCase().includes(searchName);
-        const labMatch = !searchLab || client.lab_id.toString() === searchLab;
-        const statusMatch = !searchStatus || client.status === searchStatus;
-        const amountMatch = !searchAmount || client.amount === parseFloat(searchAmount);
+    let filteredClients = clients.filter(client => {
+        let matches = true;
 
-        return nameMatch && labMatch && statusMatch && amountMatch;
+        // البحث بالاسم
+        if (name && !client.name.toLowerCase().includes(name)) {
+            matches = false;
+        }
+
+        // البحث بالمختبر
+        if (labId && client.lab_id !== parseInt(labId)) {
+            matches = false;
+        }
+
+        // البحث بالحالة
+        if (status && client.status !== status) {
+            matches = false;
+        }
+
+        // البحث بالمبلغ
+        if (amount && client.amount !== parseFloat(amount)) {
+            matches = false;
+        }
+
+        return matches;
     });
 
     displayClients(filteredClients);
@@ -225,38 +251,96 @@ function searchClients(event) {
 
 // إعادة تعيين البحث
 function resetSearch() {
-    document.querySelector('form').reset();
+    document.getElementById('searchName').value = '';
+    document.getElementById('searchLab').value = '';
+    document.getElementById('searchStatus').value = '';
+    document.getElementById('searchAmount').value = '';
+    
     displayClients(clients);
     updateStatistics(clients);
 }
 
 // تحديث حالة العميل
-async function updateClientStatus(clientId, status) {
-    const { error } = await supabaseClient
-        .from('clients')
-        .update({ status })
-        .eq('id', clientId);
+async function updateClientStatus(clientId, newStatus) {
+    try {
+        const { data, error } = await supabaseClient
+            .from('clients')
+            .update({ status: newStatus })
+            .eq('id', clientId)
+            .select()
+            .single();
 
-    if (error) {
+        if (error) throw error;
+
+        // تحديث العميل في المصفوفة المحلية
+        const index = clients.findIndex(c => c.id === clientId);
+        if (index !== -1) {
+            clients[index] = { ...clients[index], ...data };
+        }
+
+        // تحديث العرض والإحصائيات
+        displayClients(clients);
+        updateStatistics(clients);
+
+        // إظهار رسالة نجاح
+        showToast('success', 'تم تحديث حالة العميل بنجاح');
+    } catch (error) {
         console.error('Error updating client status:', error);
-        return;
+        showToast('error', 'حدث خطأ أثناء تحديث حالة العميل');
     }
-
-    await loadClients();
 }
 
 // تحديث الإحصائيات
 function updateStatistics(clientsData) {
-    document.getElementById('totalClients').textContent = formatNumber(clientsData.length);
+    // إجمالي العملاء
+    document.getElementById('totalClients').textContent = 
+        clientsData.length.toLocaleString('ar-SA');
+
+    // المدفوعات المكتملة
+    const completedCount = clientsData.filter(c => c.status === 'completed').length;
+    document.getElementById('completedPayments').textContent = 
+        completedCount.toLocaleString('ar-SA');
+
+    // المدفوعات قيد الانتظار
+    const pendingCount = clientsData.filter(c => c.status === 'pending').length;
+    document.getElementById('pendingPayments').textContent = 
+        pendingCount.toLocaleString('ar-SA');
+
+    // إجمالي المبالغ
+    const totalAmount = clientsData.reduce((sum, client) => 
+        sum + (parseFloat(client.amount) || 0), 0);
+    document.getElementById('totalAmount').textContent = 
+        formatNumber(totalAmount) + ' ريال';
+}
+
+// إظهار رسالة للمستخدم
+function showToast(type, message) {
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-white bg-${type === 'success' ? 'success' : 'danger'} border-0`;
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'assertive');
+    toast.setAttribute('aria-atomic', 'true');
     
-    const completed = clientsData.filter(c => c.status === 'completed').length;
-    document.getElementById('completedPayments').textContent = formatNumber(completed);
+    toast.innerHTML = `
+        <div class="d-flex">
+            <div class="toast-body">
+                ${message}
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    `;
     
-    const pending = clientsData.filter(c => c.status === 'pending').length;
-    document.getElementById('pendingPayments').textContent = formatNumber(pending);
+    const container = document.createElement('div');
+    container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+    container.appendChild(toast);
+    document.body.appendChild(container);
     
-    const total = clientsData.reduce((sum, client) => sum + (client.amount || 0), 0);
-    document.getElementById('totalAmount').textContent = formatNumber(total);
+    const bsToast = new bootstrap.Toast(toast);
+    bsToast.show();
+    
+    toast.addEventListener('hidden.bs.toast', () => {
+        container.remove();
+    });
 }
 
 // تبديل نوع العرض
@@ -308,27 +392,86 @@ function getStatusText(status) {
     }
 }
 
-// تبديل الوضع الليلي
+// تبديل الوضع
 function toggleTheme() {
     const html = document.documentElement;
-    const isDark = html.getAttribute('data-bs-theme') === 'dark';
-    const newTheme = isDark ? 'light' : 'dark';
+    const currentTheme = html.getAttribute('data-bs-theme');
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
     
-    html.setAttribute('data-bs-theme', newTheme);
+    setTheme(newTheme);
     localStorage.setItem('theme', newTheme);
-    
-    const icon = document.getElementById('themeIcon');
-    icon.className = `bi bi-${isDark ? 'moon-stars' : 'sun'}`;
 }
 
-// تحميل تفضيل الوضع الليلي
+// تحديث أيقونة الوضع
+function updateThemeIcon(theme) {
+    const icon = document.getElementById('themeIcon');
+    if (icon) {
+        icon.className = theme === 'dark' ? 'bi bi-sun' : 'bi bi-moon-stars';
+    }
+}
+
+// تحميل تفضيل الوضع
 function loadThemePreference() {
     const savedTheme = localStorage.getItem('theme') || 'light';
-    document.documentElement.setAttribute('data-bs-theme', savedTheme);
-    
-    const icon = document.getElementById('themeIcon');
-    icon.className = `bi bi-${savedTheme === 'dark' ? 'sun' : 'moon-stars'}`;
+    const systemTheme = savedTheme === 'light' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-bs-theme', systemTheme);
+    updateThemeIcon(systemTheme);
 }
 
 // تحميل البيانات عند فتح الصفحة
 document.addEventListener('DOMContentLoaded', initialize);
+
+// تهيئة الوضع المحفوظ
+document.addEventListener('DOMContentLoaded', () => {
+    const savedTheme = localStorage.getItem('theme') || 'light';
+    setTheme(savedTheme);
+    
+    // إضافة زر تبديل الوضع في القائمة
+    const navbarNav = document.querySelector('.navbar-nav');
+    const themeToggle = document.createElement('li');
+    themeToggle.className = 'nav-item dropdown';
+    themeToggle.innerHTML = `
+        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+            <i class="fa-solid fa-palette"></i>
+            المظهر
+        </a>
+        <ul class="dropdown-menu">
+            <li>
+                <a class="dropdown-item" href="#" onclick="setTheme('light')">
+                    <i class="fa-solid fa-sun"></i>
+                    فاتح
+                </a>
+            </li>
+            <li>
+                <a class="dropdown-item" href="#" onclick="setTheme('dark')">
+                    <i class="fa-solid fa-moon"></i>
+                    داكن
+                </a>
+            </li>
+        </ul>
+    `;
+    navbarNav.appendChild(themeToggle);
+});
+
+// تغيير الوضع
+function setTheme(theme) {
+    document.documentElement.setAttribute('data-bs-theme', theme);
+    localStorage.setItem('theme', theme);
+    updateThemeIcon(theme);
+    
+    // إضافة تأثيرات حركية عند تغيير الوضع
+    document.body.style.opacity = '0';
+    setTimeout(() => {
+        document.body.style.opacity = '1';
+    }, 200);
+    
+    // تحديث الأيقونات حسب الوضع
+    const icons = {
+        light: 'fa-sun',
+        dark: 'fa-moon'
+    };
+    
+    document.querySelectorAll('.theme-icon').forEach(icon => {
+        icon.className = `theme-icon fa-solid ${icons[theme]}`;
+    });
+}

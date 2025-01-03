@@ -34,11 +34,23 @@
     --stats-card-opacity: 0.9;
 }
 
+/* أنماط عامة */
+[data-bs-theme="dark"] {
+    --bs-body-bg: #1a1d20;
+    --bs-body-color: #e9ecef;
+}
+
+[data-bs-theme="light"] {
+    --bs-body-bg: #ffffff;
+    --bs-body-color: #212529;
+}
+
 body {
     font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     background-color: var(--bs-body-bg);
     color: var(--bs-body-color);
     transition: all 0.3s ease;
+    transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 /* تنسيقات الشريط العلوي */
@@ -101,6 +113,15 @@ body {
     font-size: 1.1rem;
 }
 
+/* أنماط زر تبديل المظهر */
+.btn[onclick="toggleTheme()"] {
+    transition: all 0.3s ease;
+}
+
+.btn[onclick="toggleTheme()"]:hover {
+    transform: rotate(15deg);
+}
+
 /* تنسيقات البطاقات */
 .card {
     border: none;
@@ -117,8 +138,6 @@ body {
 
 .stats-card {
     border: none;
-    border-radius: 0.5rem;
-    box-shadow: var(--card-shadow);
     overflow: hidden;
 }
 
@@ -139,24 +158,10 @@ body {
     background-color: var(--info-color) !important;
 }
 
-.stats-card .card-body {
-    padding: 0.75rem;
-}
-
-.stats-card .card-subtitle {
-    font-size: 0.8rem;
-    opacity: 0.9;
-}
-
-.stats-card h2 {
-    font-size: 1.5rem;
-    margin-bottom: 0;
-}
-
 .stats-card .bi {
-    font-size: 1.5rem !important;
-    opacity: 0.8;
+    opacity: var(--stats-card-opacity);
     transition: opacity 0.3s ease;
+    font-size: 2.5rem;
 }
 
 .stats-card:hover .bi {
@@ -164,12 +169,14 @@ body {
     transform: scale(1.1);
 }
 
-.bg-warning {
-    color: #664d03 !important;
+.stats-card .card-subtitle {
+    font-size: 0.9rem;
+    opacity: 0.9;
 }
 
-.bg-warning .card-subtitle {
-    color: #664d03 !important;
+.stats-card h2 {
+    font-size: 2rem;
+    font-weight: 600;
 }
 
 /* بطاقات العملاء */
@@ -218,7 +225,7 @@ body {
     color: var(--bs-gray-600);
 }
 
-/* أزرار */
+/* تنسيقات الأزرار */
 .btn {
     display: inline-flex;
     align-items: center;
@@ -265,22 +272,7 @@ body {
     box-shadow: var(--card-shadow);
 }
 
-/* تنسيق الأزرار الصغيرة جداً */
-.btn-xs {
-    padding: 0.1rem 0.4rem;
-    font-size: 0.75rem;
-    line-height: 1.2;
-    border-radius: 0.2rem;
-}
-
-.btn-group-xs > .btn {
-    padding: 0.1rem 0.4rem;
-    font-size: 0.75rem;
-    line-height: 1.2;
-    border-radius: 0.2rem;
-}
-
-/* جداول */
+/* تنسيقات الجداول */
 .table {
     background-color: var(--card-bg);
     color: var(--bs-body-color);
@@ -311,7 +303,7 @@ body {
     background-color: var(--table-hover-bg);
 }
 
-/* نماذج */
+/* تنسيقات النماذج */
 .form-control,
 .form-select {
     border: 1px solid var(--bs-border-color);
@@ -338,42 +330,6 @@ body {
 .form-label {
     font-weight: 500;
     margin-bottom: 0.5rem;
-}
-
-/* إعدادات الأرقام الإنجليزية */
-.numbers-en {
-    font-feature-settings: "kern", "liga", "clig", "calt";
-}
-
-.numbers-en input[type="number"],
-.numbers-en input[type="text"],
-.numbers-en input[type="date"],
-.numbers-en .number,
-.numbers-en .date,
-.numbers-en .amount {
-    direction: ltr !important;
-    text-align: left !important;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
-}
-
-/* تنسيق خاص للتواريخ والأرقام في الجداول */
-.numbers-en td.number,
-.numbers-en td.date,
-.numbers-en td.amount,
-.numbers-en .badge .number,
-.numbers-en .badge .amount {
-    direction: ltr !important;
-    text-align: left !important;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
-}
-
-/* تنسيق خاص للإحصائيات */
-.stats-card .number,
-.stats-card .amount {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
-    direction: ltr !important;
-    text-align: left !important;
-    display: inline-block !important;
 }
 
 /* تحسينات للوضع الداكن */
@@ -403,30 +359,54 @@ body {
     }
 }
 
-/* تذييل الصفحة */
-footer {
-    margin-top: 2rem;
-    padding: 1.5rem 0;
-    background-color: var(--navbar-bg);
-    color: var(--bs-body-color);
-    text-align: center;
-    border-top: 1px solid var(--bs-border-color);
+/* تنسيق قائمة الإدارة */
+.list-group {
+    position: sticky;
+    top: 1rem;
+    z-index: 1000;
 }
 
-footer .version {
-    font-size: 0.75rem;
-    opacity: 0.7;
-    margin-top: 0.5rem;
+.list-group-item {
+    border: none;
+    margin-bottom: 0.25rem;
+    border-radius: 0.5rem !important;
+    transition: all 0.2s ease-in-out;
 }
 
-footer .email {
-    color: var(--bs-body-color);
-    opacity: 0.8;
-    text-decoration: none;
-    transition: opacity 0.3s;
+.list-group-item.active {
+    background-color: var(--bs-primary);
+    border-color: var(--bs-primary);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
-footer .email:hover {
-    opacity: 1;
-    color: var(--bs-body-color);
+.list-group-item:not(.active) {
+    background-color: var(--bs-secondary-bg);
+}
+
+.list-group-item:hover:not(.active) {
+    background-color: var(--bs-tertiary-bg);
+    transform: translateX(-5px);
+}
+
+.tab-content {
+    min-height: 400px;
+}
+
+.tab-pane {
+    transition: all 0.3s ease-in-out;
+}
+
+.tab-pane.active {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }

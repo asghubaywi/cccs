@@ -50,25 +50,112 @@ async function updateStats() {
         const pendingPayments = clients.filter(c => c.status === 'pending').length;
         const totalAmount = clients.reduce((sum, client) => sum + (parseFloat(client.amount) || 0), 0);
 
-        document.getElementById('totalLabs').textContent = formatNumber(totalLabs);
-        document.getElementById('totalAdminClients').textContent = formatNumber(totalClients);
-        document.getElementById('pendingAdminPayments').textContent = formatNumber(pendingPayments);
-        document.getElementById('totalAdminAmount').textContent = formatNumber(totalAmount) + ' ريال';
+        document.getElementById('totalLabs').textContent = totalLabs.toLocaleString('ar-SA');
+        document.getElementById('totalAdminClients').textContent = totalClients.toLocaleString('ar-SA');
+        document.getElementById('pendingAdminPayments').textContent = pendingPayments.toLocaleString('ar-SA');
+        document.getElementById('totalAdminAmount').textContent = totalAmount.toLocaleString('ar-SA') + ' ريال';
     }
 }
 
-// دالة لتنسيق التاريخ
-function formatDate(date) {
-    return new Date(date).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
+// تهيئة التطبيق عند تحميل الصفحة
+document.addEventListener('DOMContentLoaded', () => {
+    checkAuth();
+    initTheme();
+    
+    // إضافة مستمعي الأحداث لتبديل الأقسام
+    const tabLinks = document.querySelectorAll('.list-group-item[data-bs-toggle="list"]');
+    tabLinks.forEach(link => {
+        link.addEventListener('shown.bs.tab', (event) => {
+            const targetId = event.target.getAttribute('href');
+            switch(targetId) {
+                case '#labsSection':
+                    loadLabs();
+                    break;
+                case '#clientsSection':
+                    loadClients();
+                    break;
+                case '#auditLogSection':
+                    loadAuditLog();
+                    break;
+                case '#backupSection':
+                    loadBackupHistory();
+                    updateLastBackupInfo();
+                    initAutoBackupSwitch();
+                    break;
+            }
+        });
     });
+
+    // تحميل البيانات الأولية للقسم النشط
+    const activeTab = document.querySelector('.list-group-item.active');
+    if (activeTab) {
+        activeTab.click();
+    } else {
+        document.querySelector('.list-group-item').click();
+    }
+});
+
+// التحقق من المصادقة
+async function checkAuth() {
+    try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        
+        if (user) {
+            document.getElementById('loginForm').style.display = 'none';
+            document.getElementById('adminContent').style.display = 'block';
+            document.getElementById('logoutBtn').style.display = 'block';
+            
+            // تحميل البيانات فقط بعد تأكيد تسجيل الدخول
+            await loadLabs();
+            await loadAdminClients();
+            await loadAuditLog();
+            await updateStats();
+        } else {
+            document.getElementById('loginForm').style.display = 'block';
+            document.getElementById('adminContent').style.display = 'none';
+            document.getElementById('logoutBtn').style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error checking auth:', error);
+        showToast('error', 'حدث خطأ أثناء التحقق من المصادقة');
+    }
 }
 
-// دالة لتنسيق الأرقام
-function formatNumber(number) {
-    return new Intl.NumberFormat('en-US').format(number);
+// تسجيل الدخول
+async function login(event) {
+    event.preventDefault();
+    
+    try {
+        const email = document.getElementById('loginEmail').value;
+        const password = document.getElementById('loginPassword').value;
+
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email: email,
+            password: password
+        });
+
+        if (error) throw error;
+
+        await checkAuth();
+        showToast('success', 'تم تسجيل الدخول بنجاح');
+    } catch (error) {
+        console.error('Error logging in:', error);
+        showToast('error', 'خطأ في تسجيل الدخول: ' + error.message);
+    }
+}
+
+// تسجيل الخروج
+async function logout() {
+    try {
+        const { error } = await supabase.auth.signOut();
+        if (error) throw error;
+        
+        await checkAuth();
+        showToast('success', 'تم تسجيل الخروج بنجاح');
+    } catch (error) {
+        console.error('Error logging out:', error);
+        showToast('error', 'خطأ في تسجيل الخروج: ' + error.message);
+    }
 }
 
 // Load labs
@@ -95,10 +182,10 @@ async function loadLabs() {
         row.setAttribute('data-lab-id', lab.id); // إضافة معرف المختبر للصف
         row.innerHTML = `
             <td>${lab.name}</td>
-            <td>${formatDate(lab.created_at)}</td>
+            <td>${new Date(lab.created_at).toLocaleDateString('ar-SA')}</td>
             <td>
                 <span class="badge bg-info">
-                    ${formatNumber(clientCount)}
+                    ${clientCount}
                 </span>
             </td>
             <td>
@@ -127,6 +214,95 @@ async function loadLabs() {
     });
 
     updateStats();
+}
+
+// Add new lab
+async function addLab(event) {
+    event.preventDefault();
+    
+    const name = document.getElementById('labName').value;
+
+    const { data, error } = await supabase
+        .from('labs')
+        .insert([{ name }]);
+
+    if (error) {
+        alert('خطأ في إضافة المختبر: ' + error.message);
+        return;
+    }
+
+    document.getElementById('labName').value = '';
+    await logAction('add_lab', `تم إضافة مختبر: ${name}`);
+    loadLabs();
+}
+
+// Edit lab
+async function editLab(labId, currentName) {
+    const newName = prompt('أدخل الاسم الجديد للمختبر:', currentName);
+    
+    if (newName && newName !== currentName) {
+        const { error } = await supabase
+            .from('labs')
+            .update({ name: newName })
+            .eq('id', labId);
+
+        if (error) {
+            alert('خطأ في تعديل المختبر: ' + error.message);
+            return;
+        }
+
+        await logAction('edit_lab', `تم تعديل اسم المختبر من "${currentName}" إلى "${newName}"`);
+        loadLabs();
+    }
+}
+
+// Delete lab
+async function deleteLab(labId, labName) {
+    // عرض رسالة تأكيد
+    if (!confirm(`هل أنت متأكد من حذف المختبر "${labName}"؟`)) {
+        return;
+    }
+
+    try {
+        // التحقق من وجود عملاء مرتبطين
+        const { data: clients } = await supabase
+            .from('clients')
+            .select('id')
+            .eq('lab_id', labId);
+
+        if (clients && clients.length > 0) {
+            alert('لا يمكن حذف المختبر لوجود عملاء مرتبطين به');
+            return;
+        }
+
+        // حذف المختبر
+        const { error } = await supabase
+            .from('labs')
+            .delete()
+            .eq('id', labId);
+
+        if (error) throw error;
+
+        // حذف المختبر من العرض مباشرة
+        const row = document.querySelector(`#labsTable tr[data-lab-id="${labId}"]`);
+        if (row) {
+            row.remove();
+        }
+
+        // حذف المختبر من قائمة المختبرات في نموذج العملاء
+        const labOption = document.querySelector(`#labSelect option[value="${labId}"]`);
+        if (labOption) {
+            labOption.remove();
+        }
+
+        // تحديث الإحصائيات
+        updateStats();
+        
+        showToast('success', 'تم حذف المختبر بنجاح');
+    } catch (error) {
+        console.error('Error deleting lab:', error);
+        showToast('error', 'حدث خطأ أثناء حذف المختبر');
+    }
 }
 
 // Load admin clients
@@ -174,11 +350,11 @@ async function loadAdminClients() {
                 </td>
                 <td>
                     <span class="badge bg-secondary">
-                        ${formatNumber(client.amount)} ريال
+                        ${client.amount} ريال
                     </span>
                 </td>
                 <td>${statusBadge}</td>
-                <td>${formatDate(client.created_at)}</td>
+                <td>${new Date(client.created_at).toLocaleDateString('ar-SA')}</td>
                 <td>
                     <div class="btn-group">
                         <button class="btn btn-sm btn-outline-primary" onclick="editClient(${client.id})" title="تعديل">
@@ -198,6 +374,103 @@ async function loadAdminClients() {
     } catch (error) {
         console.error('Error loading clients:', error);
         showToast('error', 'حدث خطأ أثناء تحميل العملاء');
+    }
+}
+
+// Add new client
+async function addClient(event) {
+    event.preventDefault();
+    
+    const name = document.getElementById('clientName').value;
+    const labId = document.getElementById('labSelect').value;
+    const amount = document.getElementById('amount').value;
+    const status = document.getElementById('status').value;
+
+    const { data, error } = await supabase
+        .from('clients')
+        .insert([{
+            name,
+            lab_id: labId,
+            amount,
+            status
+        }]);
+
+    if (error) {
+        alert('خطأ في إضافة العميل: ' + error.message);
+        return;
+    }
+
+    // Reset form
+    document.getElementById('clientName').value = '';
+    document.getElementById('labSelect').value = '';
+    document.getElementById('amount').value = '';
+    document.getElementById('status').value = 'pending';
+
+    await logAction('add_client', `تم إضافة عميل جديد: ${name}`);
+    loadAdminClients();
+}
+
+// Update client status
+async function updateClientStatus(clientId, currentStatus) {
+    try {
+        const newStatus = currentStatus === 'pending' ? 'completed' : 'pending';
+        
+        const { data, error } = await supabase
+            .from('clients')
+            .update({ status: newStatus })
+            .eq('id', clientId);
+
+        if (error) throw error;
+
+        // تحديث العرض في الجدول
+        const row = document.querySelector(`tr[data-client-id="${clientId}"]`);
+        if (row) {
+            const statusCell = row.querySelector('td:nth-child(4)');
+            statusCell.innerHTML = getStatusBadge(newStatus, clientId);
+        }
+
+        // تسجيل العملية
+        const actionText = newStatus === 'completed' ? 'اكتمال الدفع' : 'إعادة للانتظار';
+        await logAction('update_status', `تم ${actionText} للعميل رقم ${clientId}`);
+
+        // تحديث الإحصائيات
+        updateStats();
+        
+        showToast('success', `تم ${actionText} بنجاح`);
+    } catch (error) {
+        console.error('Error updating client status:', error);
+        showToast('error', 'حدث خطأ أثناء تحديث حالة العميل');
+    }
+}
+
+// Delete client
+async function deleteClient(clientId, clientName) {
+    // عرض رسالة تأكيد
+    if (!confirm(`هل أنت متأكد من حذف العميل "${clientName}"؟`)) {
+        return;
+    }
+
+    try {
+        const { error } = await supabase
+            .from('clients')
+            .delete()
+            .eq('id', clientId);
+
+        if (error) throw error;
+
+        // حذف العميل من العرض مباشرة
+        const row = document.querySelector(`#adminClientsTable tr[data-client-id="${clientId}"]`);
+        if (row) {
+            row.remove();
+        }
+
+        // تحديث الإحصائيات
+        updateStats();
+        
+        showToast('success', 'تم حذف العميل بنجاح');
+    } catch (error) {
+        console.error('Error deleting client:', error);
+        showToast('error', 'حدث خطأ أثناء حذف العميل');
     }
 }
 
@@ -227,126 +500,29 @@ async function loadAuditLog() {
             </td>
             <td>${log.details}</td>
             <td>${log.user_email || 'نظام'}</td>
-            <td>${formatDate(log.created_at)}</td>
+            <td>${new Date(log.created_at).toLocaleString('ar-SA')}</td>
         `;
         tableBody.appendChild(row);
     });
 }
 
-// Load backup history
-async function loadBackupHistory() {
-    console.log('بدء تحميل سجل النسخ الاحتياطي');
+// Log action
+async function logAction(action, details) {
+    const { data: { user } } = await supabase.auth.getUser();
     
-    try {
-        const tableBody = document.getElementById('backupHistoryTable');
-        if (!tableBody) {
-            throw new Error('لم يتم العثور على جدول سجل النسخ الاحتياطي');
-        }
+    const { error } = await supabase
+        .from('audit_log')
+        .insert([{
+            action,
+            details,
+            user_email: user?.email
+        }]);
 
-        showLoadingSpinner(tableBody);
-        console.log('جاري جلب البيانات من Supabase...');
-
-        // التحقق من حالة المصادقة
-        const { data: { user }, error: authError } = await supabase.auth.getUser();
-        if (authError) {
-            throw new Error('خطأ في المصادقة: ' + authError.message);
-        }
-        if (!user) {
-            throw new Error('لم يتم تسجيل الدخول');
-        }
-
-        // جلب سجلات النسخ الاحتياطي
-        const { data: logs, error: logsError } = await supabase
-            .from('audit_log')
-            .select('*')
-            .eq('action', 'create_backup')
-            .order('created_at', { ascending: false })
-            .limit(10);
-            
-        if (logsError) {
-            throw new Error('خطأ في جلب السجلات: ' + logsError.message);
-        }
-
-        console.log('تم جلب السجلات:', logs);
-        
-        // تحديث الجدول
-        tableBody.innerHTML = '';
-        
-        if (!logs || logs.length === 0) {
-            console.log('لا توجد سجلات للعرض');
-            showEmptyBackupHistory(tableBody);
-            return;
-        }
-        
-        // عرض السجلات
-        logs.forEach((log, index) => {
-            try {
-                console.log(`معالجة السجل ${index + 1}:`, log);
-                const row = createBackupHistoryRow(log);
-                tableBody.appendChild(row);
-            } catch (rowError) {
-                console.error(`خطأ في معالجة السجل ${index + 1}:`, rowError);
-                // استمر في معالجة باقي السجلات
-            }
-        });
-
-        console.log('تم تحميل سجل النسخ الاحتياطي بنجاح');
-    } catch (error) {
-        console.error('خطأ في تحميل سجل النسخ الاحتياطي:', error);
-        showToast('error', 'حدث خطأ أثناء تحميل سجل النسخ الاحتياطي: ' + error.message);
-        
-        const tableBody = document.getElementById('backupHistoryTable');
-        if (tableBody) {
-            showErrorMessage(tableBody, error.message);
-        }
-    }
-}
-
-// إنشاء صف في جدول سجل النسخ الاحتياطي
-function createBackupHistoryRow(log) {
-    if (!log || !log.created_at || !log.details) {
-        console.error('بيانات السجل غير صالحة:', log);
-        throw new Error('بيانات السجل غير صالحة');
+    if (error) {
+        console.error('Error logging action:', error);
     }
 
-    const row = document.createElement('tr');
-    try {
-        const backupType = log.details.includes('auto') ? 'تلقائي' : 'يدوي';
-        const badgeClass = log.details.includes('auto') ? 'info' : 'primary';
-        const size = log.details.split('الحجم: ')[1] || 'غير معروف';
-        const date = new Date(log.created_at);
-        
-        if (isNaN(date.getTime())) {
-            throw new Error('تاريخ غير صالح');
-        }
-        
-        row.innerHTML = `
-            <td>${formatDate(date)}</td>
-            <td>
-                <span class="badge bg-${badgeClass}">
-                    ${backupType}
-                </span>
-            </td>
-            <td dir="ltr">${size}</td>
-            <td>
-                <button class="btn btn-sm btn-outline-primary" 
-                        onclick="downloadBackup('${log.id}')" 
-                        title="تحميل النسخة الاحتياطية">
-                    <i class="bi bi-download"></i>
-                </button>
-            </td>
-        `;
-    } catch (error) {
-        console.error('خطأ في إنشاء صف السجل:', error);
-        row.innerHTML = `
-            <td colspan="4" class="text-center text-danger">
-                <i class="bi bi-exclamation-circle-fill me-1"></i>
-                خطأ في عرض هذا السجل
-            </td>
-        `;
-    }
-    
-    return row;
+    loadAuditLog();
 }
 
 // وظائف النسخ الاحتياطي
@@ -604,7 +780,7 @@ function createBackupHistoryRow(log) {
         }
         
         row.innerHTML = `
-            <td>${formatDate(date)}</td>
+            <td>${date.toLocaleString('ar-SA')}</td>
             <td>
                 <span class="badge bg-${badgeClass}">
                     ${backupType}
@@ -700,7 +876,7 @@ function updateLastBackupInfo() {
     
     if (lastBackup) {
         const lastBackupDate = new Date(lastBackup);
-        infoElement.textContent = `آخر نسخة احتياطية: ${formatDate(lastBackupDate)}`;
+        infoElement.textContent = `آخر نسخة احتياطية: ${lastBackupDate.toLocaleString('ar-SA')}`;
     } else {
         infoElement.textContent = 'آخر نسخة احتياطية: لم يتم إجراء نسخ احتياطي بعد';
     }
@@ -803,309 +979,3 @@ function formatFileSize(bytes) {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
-
-// التحقق من المصادقة
-async function checkAuth() {
-    try {
-        const { data: { user }, error } = await supabase.auth.getUser();
-        
-        if (user) {
-            document.getElementById('loginForm').style.display = 'none';
-            document.getElementById('adminContent').style.display = 'block';
-            document.getElementById('logoutBtn').style.display = 'block';
-            
-            // تحميل البيانات فقط بعد تأكيد تسجيل الدخول
-            await loadLabs();
-            await loadAdminClients();
-            await loadAuditLog();
-            await updateStats();
-        } else {
-            document.getElementById('loginForm').style.display = 'block';
-            document.getElementById('adminContent').style.display = 'none';
-            document.getElementById('logoutBtn').style.display = 'none';
-        }
-    } catch (error) {
-        console.error('Error checking auth:', error);
-        showToast('error', 'حدث خطأ أثناء التحقق من المصادقة');
-    }
-}
-
-// تسجيل الدخول
-async function login(event) {
-    event.preventDefault();
-    
-    try {
-        const email = document.getElementById('loginEmail').value;
-        const password = document.getElementById('loginPassword').value;
-
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email: email,
-            password: password
-        });
-
-        if (error) throw error;
-
-        await checkAuth();
-        showToast('success', 'تم تسجيل الدخول بنجاح');
-    } catch (error) {
-        console.error('Error logging in:', error);
-        showToast('error', 'خطأ في تسجيل الدخول: ' + error.message);
-    }
-}
-
-// تسجيل الخروج
-async function logout() {
-    try {
-        const { error } = await supabase.auth.signOut();
-        if (error) throw error;
-        
-        await checkAuth();
-        showToast('success', 'تم تسجيل الخروج بنجاح');
-    } catch (error) {
-        console.error('Error logging out:', error);
-        showToast('error', 'خطأ في تسجيل الخروج: ' + error.message);
-    }
-}
-
-// Add new lab
-async function addLab(event) {
-    event.preventDefault();
-    
-    const name = document.getElementById('labName').value;
-
-    const { data, error } = await supabase
-        .from('labs')
-        .insert([{ name }]);
-
-    if (error) {
-        alert('خطأ في إضافة المختبر: ' + error.message);
-        return;
-    }
-
-    document.getElementById('labName').value = '';
-    await logAction('add_lab', `تم إضافة مختبر: ${name}`);
-    loadLabs();
-}
-
-// Edit lab
-async function editLab(labId, currentName) {
-    const newName = prompt('أدخل الاسم الجديد للمختبر:', currentName);
-    
-    if (newName && newName !== currentName) {
-        const { error } = await supabase
-            .from('labs')
-            .update({ name: newName })
-            .eq('id', labId);
-
-        if (error) {
-            alert('خطأ في تعديل المختبر: ' + error.message);
-            return;
-        }
-
-        await logAction('edit_lab', `تم تعديل اسم المختبر من "${currentName}" إلى "${newName}"`);
-        loadLabs();
-    }
-}
-
-// Delete lab
-async function deleteLab(labId, labName) {
-    // عرض رسالة تأكيد
-    if (!confirm(`هل أنت متأكد من حذف المختبر "${labName}"؟`)) {
-        return;
-    }
-
-    try {
-        // التحقق من وجود عملاء مرتبطين
-        const { data: clients } = await supabase
-            .from('clients')
-            .select('id')
-            .eq('lab_id', labId);
-
-        if (clients && clients.length > 0) {
-            alert('لا يمكن حذف المختبر لوجود عملاء مرتبطين به');
-            return;
-        }
-
-        // حذف المختبر
-        const { error } = await supabase
-            .from('labs')
-            .delete()
-            .eq('id', labId);
-
-        if (error) throw error;
-
-        // حذف المختبر من العرض مباشرة
-        const row = document.querySelector(`#labsTable tr[data-lab-id="${labId}"]`);
-        if (row) {
-            row.remove();
-        }
-
-        // حذف المختبر من قائمة المختبرات في نموذج العملاء
-        const labOption = document.querySelector(`#labSelect option[value="${labId}"]`);
-        if (labOption) {
-            labOption.remove();
-        }
-
-        // تحديث الإحصائيات
-        updateStats();
-        
-        showToast('success', 'تم حذف المختبر بنجاح');
-    } catch (error) {
-        console.error('Error deleting lab:', error);
-        showToast('error', 'حدث خطأ أثناء حذف المختبر');
-    }
-}
-
-// Add new client
-async function addClient(event) {
-    event.preventDefault();
-    
-    const name = document.getElementById('clientName').value;
-    const labId = document.getElementById('labSelect').value;
-    const amount = document.getElementById('amount').value;
-    const status = document.getElementById('status').value;
-
-    const { data, error } = await supabase
-        .from('clients')
-        .insert([{
-            name,
-            lab_id: labId,
-            amount,
-            status
-        }]);
-
-    if (error) {
-        alert('خطأ في إضافة العميل: ' + error.message);
-        return;
-    }
-
-    // Reset form
-    document.getElementById('clientName').value = '';
-    document.getElementById('labSelect').value = '';
-    document.getElementById('amount').value = '';
-    document.getElementById('status').value = 'pending';
-
-    await logAction('add_client', `تم إضافة عميل جديد: ${name}`);
-    loadAdminClients();
-}
-
-// Update client status
-async function updateClientStatus(clientId, currentStatus) {
-    try {
-        const newStatus = currentStatus === 'pending' ? 'completed' : 'pending';
-        
-        const { data, error } = await supabase
-            .from('clients')
-            .update({ status: newStatus })
-            .eq('id', clientId);
-
-        if (error) throw error;
-
-        // تحديث العرض في الجدول
-        const row = document.querySelector(`tr[data-client-id="${clientId}"]`);
-        if (row) {
-            const statusCell = row.querySelector('td:nth-child(4)');
-            statusCell.innerHTML = getStatusBadge(newStatus, clientId);
-        }
-
-        // تسجيل العملية
-        const actionText = newStatus === 'completed' ? 'اكتمال الدفع' : 'إعادة للانتظار';
-        await logAction('update_status', `تم ${actionText} للعميل رقم ${clientId}`);
-
-        // تحديث الإحصائيات
-        updateStats();
-        
-        showToast('success', `تم ${actionText} بنجاح`);
-    } catch (error) {
-        console.error('Error updating client status:', error);
-        showToast('error', 'حدث خطأ أثناء تحديث حالة العميل');
-    }
-}
-
-// Delete client
-async function deleteClient(clientId, clientName) {
-    // عرض رسالة تأكيد
-    if (!confirm(`هل أنت متأكد من حذف العميل "${clientName}"؟`)) {
-        return;
-    }
-
-    try {
-        const { error } = await supabase
-            .from('clients')
-            .delete()
-            .eq('id', clientId);
-
-        if (error) throw error;
-
-        // حذف العميل من العرض مباشرة
-        const row = document.querySelector(`#adminClientsTable tr[data-client-id="${clientId}"]`);
-        if (row) {
-            row.remove();
-        }
-
-        // تحديث الإحصائيات
-        updateStats();
-        
-        showToast('success', 'تم حذف العميل بنجاح');
-    } catch (error) {
-        console.error('Error deleting client:', error);
-        showToast('error', 'حدث خطأ أثناء حذف العميل');
-    }
-}
-
-// Log action
-async function logAction(action, details) {
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    const { error } = await supabase
-        .from('audit_log')
-        .insert([{
-            action,
-            details,
-            user_email: user?.email
-        }]);
-
-    if (error) {
-        console.error('Error logging action:', error);
-    }
-
-    loadAuditLog();
-}
-
-// تهيئة التطبيق عند تحميل الصفحة
-document.addEventListener('DOMContentLoaded', () => {
-    checkAuth();
-    initTheme();
-    
-    // إضافة مستمعي الأحداث لتبديل الأقسام
-    const tabLinks = document.querySelectorAll('.list-group-item[data-bs-toggle="list"]');
-    tabLinks.forEach(link => {
-        link.addEventListener('shown.bs.tab', (event) => {
-            const targetId = event.target.getAttribute('href');
-            switch(targetId) {
-                case '#labsSection':
-                    loadLabs();
-                    break;
-                case '#clientsSection':
-                    loadAdminClients();
-                    break;
-                case '#auditLogSection':
-                    loadAuditLog();
-                    break;
-                case '#backupSection':
-                    loadBackupHistory();
-                    updateLastBackupInfo();
-                    initAutoBackupSwitch();
-                    break;
-            }
-        });
-    });
-
-    // تحميل البيانات الأولية للقسم النشط
-    const activeTab = document.querySelector('.list-group-item.active');
-    if (activeTab) {
-        activeTab.click();
-    } else {
-        document.querySelector('.list-group-item').click();
-    }
-});

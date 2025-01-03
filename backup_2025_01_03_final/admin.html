@@ -26,7 +26,7 @@
                         <i class="bi bi-box-arrow-left"></i>
                         تسجيل الخروج
                     </button>
-                    <button class="btn btn-outline-primary" onclick="toggleTheme()">
+                    <button class="btn btn-outline-primary" onclick="toggleTheme()" title="تغيير المظهر">
                         <i class="bi bi-moon-stars" id="themeIcon"></i>
                     </button>
                 </div>
@@ -124,14 +124,21 @@
                 <!-- القائمة الجانبية -->
                 <div class="col-md-3">
                     <div class="list-group mb-4 sticky-top" style="top: 80px;">
-                        <a href="#labsSection" class="list-group-item list-group-item-action active" data-bs-toggle="list">
-                            <i class="bi bi-building"></i> إدارة المختبرات
+                        <a href="#labsSection" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                            <i class="bi bi-building"></i>
+                            المختبرات
                         </a>
                         <a href="#clientsSection" class="list-group-item list-group-item-action" data-bs-toggle="list">
-                            <i class="bi bi-people"></i> إدارة العملاء
+                            <i class="bi bi-people"></i>
+                            العملاء
                         </a>
                         <a href="#auditLogSection" class="list-group-item list-group-item-action" data-bs-toggle="list">
-                            <i class="bi bi-clock-history"></i> سجل العمليات
+                            <i class="bi bi-clock-history"></i>
+                            سجل العمليات
+                        </a>
+                        <a href="#backupSection" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                            <i class="bi bi-cloud-download"></i>
+                            النسخ الاحتياطي
                         </a>
                     </div>
                 </div>
@@ -272,6 +279,70 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- قسم النسخ الاحتياطي -->
+                        <div class="tab-pane fade" id="backupSection">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title mb-4">النسخ الاحتياطي للبيانات</h5>
+                                    
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <div class="card h-100">
+                                                <div class="card-body">
+                                                    <h6 class="card-subtitle mb-3">نسخ احتياطي يدوي</h6>
+                                                    <p class="text-muted small mb-3">
+                                                        قم بتحميل نسخة احتياطية من جميع البيانات في ملف JSON
+                                                    </p>
+                                                    <button class="btn btn-primary" onclick="downloadBackup()">
+                                                        <i class="bi bi-download me-1"></i>
+                                                        تحميل نسخة احتياطية
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card h-100">
+                                                <div class="card-body">
+                                                    <h6 class="card-subtitle mb-3">النسخ الاحتياطي التلقائي</h6>
+                                                    <p class="text-muted small mb-3">
+                                                        قم بتفعيل النسخ الاحتياطي التلقائي كل 24 ساعة
+                                                    </p>
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" 
+                                                               id="autoBackupSwitch" onchange="toggleAutoBackup(this)">
+                                                        <label class="form-check-label" for="autoBackupSwitch">
+                                                            تفعيل النسخ الاحتياطي التلقائي
+                                                        </label>
+                                                    </div>
+                                                    <div id="lastBackupInfo" class="text-muted small mt-2">
+                                                        آخر نسخة احتياطية: لم يتم إجراء نسخ احتياطي بعد
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- جدول النسخ الاحتياطية السابقة -->
+                                    <div class="mt-4">
+                                        <h6 class="mb-3">النسخ الاحتياطية السابقة</h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>التاريخ</th>
+                                                        <th>النوع</th>
+                                                        <th>حجم الملف</th>
+                                                        <th>الإجراءات</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="backupHistoryTable"></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -279,7 +350,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2.39.1"></script>
     <script src="js/admin.js"></script>
 </body>
 </html>

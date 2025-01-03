@@ -1,2 +1,5 @@
-.project/dictionary.sqlite
+node_modules/
+.env
 .DS_Store
+npm-debug.log*
+backup_*/

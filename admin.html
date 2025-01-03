@@ -1,17 +1,17 @@
 <!DOCTYPE html>
-<html dir="rtl" lang="ar">
+<html dir="rtl" lang="ar" class="numbers-en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة الإدارة - نظام إدارة المدفوعات</title>
+    <title>لوحة الإدارة - نظام مستحقات المختبرات</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
     <link href="css/styles.css" rel="stylesheet">
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+    <nav class="navbar navbar-expand-lg">
         <div class="container">
-            <a class="navbar-brand" href="index.html">نظام إدارة المدفوعات</a>
+            <a class="navbar-brand" href="index.html">نظام مستحقات المختبرات</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
@@ -21,9 +21,15 @@
                         <a class="nav-link active" href="#">لوحة الإدارة</a>
                     </li>
                 </ul>
-                <button id="logoutBtn" class="btn btn-light" onclick="logout()" style="display: none;">
-                    تسجيل الخروج
-                </button>
+                <div class="d-flex gap-2">
+                    <button id="logoutBtn" class="btn btn-outline-danger" onclick="logout()" style="display: none;">
+                        <i class="bi bi-box-arrow-left"></i>
+                        تسجيل الخروج
+                    </button>
+                    <button class="btn btn-outline-primary" onclick="toggleTheme()" title="تغيير المظهر">
+                        <i class="bi bi-moon-stars" id="themeIcon"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </nav>
@@ -32,35 +38,107 @@
         <!-- نموذج تسجيل الدخول -->
         <div id="loginForm" class="card mb-4">
             <div class="card-body">
-                <h5 class="card-title">تسجيل الدخول</h5>
+                <h5 class="card-title mb-4">تسجيل الدخول</h5>
                 <form onsubmit="login(event)">
                     <div class="mb-3">
                         <label class="form-label">البريد الإلكتروني</label>
-                        <input type="email" id="loginEmail" class="form-control" required>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-envelope"></i></span>
+                            <input type="email" id="loginEmail" class="form-control" required>
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">كلمة المرور</label>
-                        <input type="password" id="loginPassword" class="form-control" required>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-key"></i></span>
+                            <input type="password" id="loginPassword" class="form-control" required>
+                        </div>
                     </div>
-                    <button type="submit" class="btn btn-primary">دخول</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-box-arrow-in-right"></i>
+                        دخول
+                    </button>
                 </form>
             </div>
         </div>
 
         <!-- محتوى الإدارة -->
         <div id="adminContent" style="display: none;">
+            <!-- الإحصائيات -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card stats-card bg-primary bg-gradient text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="card-subtitle mb-2">إجمالي المختبرات</h6>
+                                    <h2 id="totalLabs" class="mb-0">0</h2>
+                                </div>
+                                <i class="bi bi-building fs-1"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card stats-card bg-success bg-gradient text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="card-subtitle mb-2">إجمالي العملاء</h6>
+                                    <h2 id="totalAdminClients" class="mb-0">0</h2>
+                                </div>
+                                <i class="bi bi-people fs-1"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card stats-card bg-warning bg-gradient">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="card-subtitle mb-2">قيد الانتظار</h6>
+                                    <h2 id="pendingAdminPayments" class="mb-0">0</h2>
+                                </div>
+                                <i class="bi bi-clock fs-1"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card stats-card bg-info bg-gradient text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="card-subtitle mb-2">إجمالي المبالغ</h6>
+                                    <h2 id="totalAdminAmount" class="mb-0">0</h2>
+                                </div>
+                                <i class="bi bi-currency-dollar fs-1"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <div class="row">
                 <!-- القائمة الجانبية -->
                 <div class="col-md-3">
-                    <div class="list-group mb-4">
-                        <a href="#labsSection" class="list-group-item list-group-item-action active" data-bs-toggle="list">
-                            <i class="bi bi-building"></i> إدارة المختبرات
+                    <div class="list-group mb-4 sticky-top" style="top: 80px;">
+                        <a href="#labsSection" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                            <i class="bi bi-building"></i>
+                            المختبرات
                         </a>
                         <a href="#clientsSection" class="list-group-item list-group-item-action" data-bs-toggle="list">
-                            <i class="bi bi-people"></i> إدارة العملاء
+                            <i class="bi bi-people"></i>
+                            العملاء
                         </a>
                         <a href="#auditLogSection" class="list-group-item list-group-item-action" data-bs-toggle="list">
-                            <i class="bi bi-clock-history"></i> سجل العمليات
+                            <i class="bi bi-clock-history"></i>
+                            سجل العمليات
+                        </a>
+                        <a href="#backupSection" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                            <i class="bi bi-cloud-download"></i>
+                            النسخ الاحتياطي
                         </a>
                     </div>
                 </div>
@@ -72,11 +150,14 @@
                         <div class="tab-pane fade show active" id="labsSection">
                             <div class="card mb-4">
                                 <div class="card-body">
-                                    <h5 class="card-title">إضافة مختبر جديد</h5>
+                                    <h5 class="card-title mb-4">إضافة مختبر جديد</h5>
                                     <form onsubmit="addLab(event)">
                                         <div class="mb-3">
                                             <label class="form-label">اسم المختبر</label>
-                                            <input type="text" id="labName" class="form-control" required>
+                                            <div class="input-group">
+                                                <span class="input-group-text"><i class="bi bi-building"></i></span>
+                                                <input type="text" id="labName" class="form-control" required>
+                                            </div>
                                         </div>
                                         <button type="submit" class="btn btn-primary">
                                             <i class="bi bi-plus-circle"></i> إضافة
@@ -87,9 +168,9 @@
 
                             <div class="card">
                                 <div class="card-body">
-                                    <h5 class="card-title">قائمة المختبرات</h5>
+                                    <h5 class="card-title mb-4">قائمة المختبرات</h5>
                                     <div class="table-responsive">
-                                        <table class="table">
+                                        <table class="table table-hover">
                                             <thead>
                                                 <tr>
                                                     <th>الاسم</th>
@@ -109,31 +190,41 @@
                         <div class="tab-pane fade" id="clientsSection">
                             <div class="card mb-4">
                                 <div class="card-body">
-                                    <h5 class="card-title">إضافة عميل جديد</h5>
+                                    <h5 class="card-title mb-4">إضافة عميل جديد</h5>
                                     <form onsubmit="addClient(event)">
                                         <div class="row g-3">
                                             <div class="col-md-6">
                                                 <label class="form-label">اسم العميل</label>
-                                                <input type="text" id="clientName" class="form-control" required>
+                                                <div class="input-group">
+                                                    <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                                    <input type="text" id="clientName" class="form-control" required>
+                                                </div>
                                             </div>
                                             <div class="col-md-6">
                                                 <label class="form-label">المختبر</label>
-                                                <select id="labSelect" class="form-select" required></select>
+                                                <div class="input-group">
+                                                    <span class="input-group-text"><i class="bi bi-building"></i></span>
+                                                    <select id="labSelect" class="form-select" required></select>
+                                                </div>
                                             </div>
                                             <div class="col-md-6">
                                                 <label class="form-label">المبلغ</label>
                                                 <div class="input-group">
+                                                    <span class="input-group-text"><i class="bi bi-currency-dollar"></i></span>
                                                     <input type="number" id="amount" class="form-control" required>
                                                     <span class="input-group-text">ريال</span>
                                                 </div>
                                             </div>
                                             <div class="col-md-6">
                                                 <label class="form-label">الحالة</label>
-                                                <select id="status" class="form-select" required>
-                                                    <option value="pending">قيد الانتظار</option>
-                                                    <option value="completed">مكتمل</option>
-                                                    <option value="cancelled">ملغي</option>
-                                                </select>
+                                                <div class="input-group">
+                                                    <span class="input-group-text"><i class="bi bi-tag"></i></span>
+                                                    <select id="status" class="form-select" required>
+                                                        <option value="pending">قيد الانتظار</option>
+                                                        <option value="completed">مكتمل</option>
+                                                        <option value="cancelled">ملغي</option>
+                                                    </select>
+                                                </div>
                                             </div>
                                             <div class="col-12">
                                                 <button type="submit" class="btn btn-primary">
@@ -147,9 +238,9 @@
 
                             <div class="card">
                                 <div class="card-body">
-                                    <h5 class="card-title">إدارة العملاء</h5>
+                                    <h5 class="card-title mb-4">إدارة العملاء</h5>
                                     <div class="table-responsive">
-                                        <table class="table">
+                                        <table class="table table-hover">
                                             <thead>
                                                 <tr>
                                                     <th>الاسم</th>
@@ -167,57 +258,13 @@
                             </div>
                         </div>
 
-                        <!-- قسم التقارير -->
-                        <div class="tab-pane fade" id="reportsSection">
-                            <div class="card">
-                                <div class="card-body">
-                                    <h5 class="card-title">التقارير</h5>
-                                    <div class="row g-3">
-                                        <div class="col-md-6">
-                                            <div class="card bg-light">
-                                                <div class="card-body">
-                                                    <h6 class="card-title">تقرير المدفوعات الشهري</h6>
-                                                    <button class="btn btn-primary" onclick="generateMonthlyReport()">
-                                                        <i class="bi bi-download"></i> تحميل التقرير
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <div class="card bg-light">
-                                                <div class="card-body">
-                                                    <h6 class="card-title">تقرير المختبرات</h6>
-                                                    <button class="btn btn-primary" onclick="generateLabsReport()">
-                                                        <i class="bi bi-download"></i> تحميل التقرير
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- سجل العمليات -->
+                        <!-- قسم سجل العمليات -->
                         <div class="tab-pane fade" id="auditLogSection">
                             <div class="card">
                                 <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center mb-4">
-                                        <h5 class="card-title mb-0">سجل العمليات</h5>
-                                        <div class="btn-group">
-                                            <button class="btn btn-outline-secondary" onclick="filterAuditLog('today')">
-                                                <i class="bi bi-calendar-day"></i> اليوم
-                                            </button>
-                                            <button class="btn btn-outline-secondary" onclick="filterAuditLog('week')">
-                                                <i class="bi bi-calendar-week"></i> الأسبوع
-                                            </button>
-                                            <button class="btn btn-outline-secondary" onclick="filterAuditLog('month')">
-                                                <i class="bi bi-calendar-month"></i> الشهر
-                                            </button>
-                                        </div>
-                                    </div>
+                                    <h5 class="card-title mb-4">سجل العمليات</h5>
                                     <div class="table-responsive">
-                                        <table class="table">
+                                        <table class="table table-hover">
                                             <thead>
                                                 <tr>
                                                     <th>العملية</th>
@@ -232,14 +279,89 @@
                                 </div>
                             </div>
                         </div>
+
+                        <!-- قسم النسخ الاحتياطي -->
+                        <div class="tab-pane fade" id="backupSection">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title mb-4">النسخ الاحتياطي للبيانات</h5>
+                                    
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <div class="card h-100">
+                                                <div class="card-body">
+                                                    <h6 class="card-subtitle mb-3">نسخ احتياطي يدوي</h6>
+                                                    <p class="text-muted small mb-3">
+                                                        قم بتحميل نسخة احتياطية من جميع البيانات في ملف JSON
+                                                    </p>
+                                                    <button class="btn btn-primary" onclick="downloadBackup()">
+                                                        <i class="bi bi-download me-1"></i>
+                                                        تحميل نسخة احتياطية
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card h-100">
+                                                <div class="card-body">
+                                                    <h6 class="card-subtitle mb-3">النسخ الاحتياطي التلقائي</h6>
+                                                    <p class="text-muted small mb-3">
+                                                        قم بتفعيل النسخ الاحتياطي التلقائي كل 24 ساعة
+                                                    </p>
+                                                    <div class="form-check form-switch">
+                                                        <input class="form-check-input" type="checkbox" 
+                                                               id="autoBackupSwitch" onchange="toggleAutoBackup(this)">
+                                                        <label class="form-check-label" for="autoBackupSwitch">
+                                                            تفعيل النسخ الاحتياطي التلقائي
+                                                        </label>
+                                                    </div>
+                                                    <div id="lastBackupInfo" class="text-muted small mt-2">
+                                                        آخر نسخة احتياطية: لم يتم إجراء نسخ احتياطي بعد
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- جدول النسخ الاحتياطية السابقة -->
+                                    <div class="mt-4">
+                                        <h6 class="mb-3">النسخ الاحتياطية السابقة</h6>
+                                        <div class="table-responsive">
+                                            <table class="table table-hover">
+                                                <thead>
+                                                    <tr>
+                                                        <th>التاريخ</th>
+                                                        <th>النوع</th>
+                                                        <th>حجم الملف</th>
+                                                        <th>الإجراءات</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="backupHistoryTable"></tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <footer>
+        <div class="container">
+            <h6 class="mb-2">قسم عمليات الفسح المركزي</h6>
+            <a href="mailto:cccs@sfda.gov.sa" class="email">
+                <i class="bi bi-envelope"></i>
+                cccs@sfda.gov.sa
+            </a>
+            <div class="version">الإصدار 2025</div>
+        </div>
+    </footer>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2.39.1"></script>
     <script src="js/admin.js"></script>
 </body>
 </html>

@@ -4,11 +4,60 @@ const supabaseClient = supabase.createClient(
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhndXh2ZXV2cW5lam1kd3J5aGpjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQ0MzQ2MTQsImV4cCI6MjA1MDAxMDYxNH0.RIbDi05WTn77ROJBoOgmtAR2G06_5tnhYF0adJ1MU5Q'
 );
 
+// تهيئة الوضع المظلم
+function initTheme() {
+    const currentTheme = localStorage.getItem('theme') || 'light';
+    document.documentElement.setAttribute('data-bs-theme', currentTheme);
+    updateThemeIcon(currentTheme);
+}
+
+// تبديل الوضع المظلم
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-bs-theme');
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    
+    document.documentElement.setAttribute('data-bs-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    updateThemeIcon(newTheme);
+}
+
+// تحديث أيقونة الوضع المظلم
+function updateThemeIcon(theme) {
+    const icon = document.getElementById('themeIcon');
+    icon.className = theme === 'light' ? 'bi bi-moon-stars' : 'bi bi-sun';
+}
+
+// تحديث الإحصائيات
+async function updateStats() {
+    const { data: labs } = await supabaseClient
+        .from('labs')
+        .select('*');
+    
+    const { data: clients } = await supabaseClient
+        .from('clients')
+        .select('amount, status');
+
+    if (labs && clients) {
+        const totalLabs = labs.length;
+        const totalClients = clients.length;
+        const pendingPayments = clients.filter(c => c.status === 'pending').length;
+        const totalAmount = clients.reduce((sum, client) => sum + (parseFloat(client.amount) || 0), 0);
+
+        document.getElementById('totalLabs').textContent = totalLabs.toLocaleString('ar-SA');
+        document.getElementById('totalAdminClients').textContent = totalClients.toLocaleString('ar-SA');
+        document.getElementById('pendingAdminPayments').textContent = pendingPayments.toLocaleString('ar-SA');
+        document.getElementById('totalAdminAmount').textContent = totalAmount.toLocaleString('ar-SA') + ' ريال';
+    }
+}
+
 // Check authentication status on page load
 document.addEventListener('DOMContentLoaded', () => {
+    initTheme();
     checkAuth();
     loadLabs();
     loadAdminClients();
+    loadAuditLog();
+    updateStats();
 });
 
 // Check authentication
@@ -62,7 +111,10 @@ async function logout() {
 async function loadLabs() {
     const { data: labs, error } = await supabaseClient
         .from('labs')
-        .select('*, clients(count)');
+        .select(`
+            *,
+            clients:clients(id)
+        `);
 
     if (error) {
         console.error('Error loading labs:', error);
@@ -74,17 +126,22 @@ async function loadLabs() {
     tableBody.innerHTML = '';
 
     labs.forEach(lab => {
+        const clientCount = lab.clients ? lab.clients.length : 0;
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${lab.name}</td>
             <td>${new Date(lab.created_at).toLocaleDateString('ar-SA')}</td>
-            <td>${lab.clients?.count || 0}</td>
+            <td>
+                <span class="badge bg-info">
+                    ${clientCount}
+                </span>
+            </td>
             <td>
                 <div class="btn-group">
-                    <button class="btn btn-sm btn-primary" onclick="editLab(${lab.id}, '${lab.name}')" title="تعديل">
+                    <button class="btn btn-sm btn-outline-primary" onclick="editLab(${lab.id}, '${lab.name}')" title="تعديل">
                         <i class="bi bi-pencil"></i>
                     </button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteLab(${lab.id})" title="حذف">
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteLab(${lab.id})" title="حذف">
                         <i class="bi bi-trash"></i>
                     </button>
                 </div>
@@ -103,6 +160,8 @@ async function loadLabs() {
         option.textContent = lab.name;
         labSelect.appendChild(option);
     });
+
+    updateStats();
 }
 
 // Add new lab
@@ -121,6 +180,7 @@ async function addLab(event) {
     }
 
     document.getElementById('labName').value = '';
+    await logAction('add_lab', `تم إضافة مختبر: ${name}`);
     loadLabs();
 }
 
@@ -139,6 +199,7 @@ async function editLab(labId, currentName) {
             return;
         }
 
+        await logAction('edit_lab', `تم تعديل اسم المختبر من "${currentName}" إلى "${newName}"`);
         loadLabs();
     }
 }
@@ -159,6 +220,7 @@ async function deleteLab(labId) {
         return;
     }
 
+    await logAction('delete_lab', `تم حذف المختبر`);
     loadLabs();
 }
 
@@ -183,221 +245,206 @@ async function loadAdminClients() {
     tableBody.innerHTML = '';
 
     clients.forEach(client => {
+        const statusBadge = getStatusBadge(client.status);
         const row = document.createElement('tr');
         row.innerHTML = `
             <td>${client.name}</td>
-            <td>${client.labs?.name || 'غير محدد'}</td>
-            <td>${client.amount} ريال</td>
             <td>
-                <select class="form-select form-select-sm status-select" 
-                        onchange="updateClientStatus(${client.id}, this.value)"
-                        style="width: 150px">
-                    <option value="pending" ${client.status === 'pending' ? 'selected' : ''}>
-                        قيد الانتظار
-                    </option>
-                    <option value="completed" ${client.status === 'completed' ? 'selected' : ''}>
-                        مكتمل
-                    </option>
-                    <option value="cancelled" ${client.status === 'cancelled' ? 'selected' : ''}>
-                        ملغي
-                    </option>
-                </select>
+                <span class="badge bg-info">
+                    ${client.labs?.name || 'غير محدد'}
+                </span>
+            </td>
+            <td>
+                <span class="badge bg-secondary">
+                    ${client.amount} ريال
+                </span>
+            </td>
+            <td>
+                <div class="d-flex gap-2 align-items-center">
+                    ${statusBadge}
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-three-dots-vertical"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item ${client.status === 'pending' ? 'active' : ''}" href="#" onclick="updateClientStatus(${client.id}, 'pending'); return false;">
+                                    <i class="bi bi-clock text-warning"></i> قيد الانتظار
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item ${client.status === 'completed' ? 'active' : ''}" href="#" onclick="updateClientStatus(${client.id}, 'completed'); return false;">
+                                    <i class="bi bi-check-circle text-success"></i> مكتمل
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item ${client.status === 'cancelled' ? 'active' : ''}" href="#" onclick="updateClientStatus(${client.id}, 'cancelled'); return false;">
+                                    <i class="bi bi-x-circle text-danger"></i> ملغي
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
             </td>
             <td>${new Date(client.created_at).toLocaleDateString('ar-SA')}</td>
             <td>
                 <div class="btn-group">
-                    <button class="btn btn-sm btn-primary" onclick="editClient(${client.id})">
-                        <i class="bi bi-pencil"></i> تعديل
+                    <button class="btn btn-sm btn-outline-primary" onclick="editClient(${client.id})" title="تعديل">
+                        <i class="bi bi-pencil"></i>
                     </button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteClient(${client.id})">
-                        <i class="bi bi-trash"></i> حذف
+                    <button class="btn btn-sm btn-outline-danger" onclick="deleteClient(${client.id})" title="حذف">
+                        <i class="bi bi-trash"></i>
                     </button>
                 </div>
             </td>
         `;
         tableBody.appendChild(row);
     });
+
+    updateStats();
 }
 
 // Add new client
 async function addClient(event) {
     event.preventDefault();
     
-    const formData = {
-        name: document.getElementById('clientName').value,
-        lab_id: parseInt(document.getElementById('labSelect').value),
-        amount: parseInt(document.getElementById('amount').value),
-        status: document.getElementById('status').value
-    };
+    const name = document.getElementById('clientName').value;
+    const labId = document.getElementById('labSelect').value;
+    const amount = document.getElementById('amount').value;
+    const status = document.getElementById('status').value;
 
     const { data, error } = await supabaseClient
         .from('clients')
-        .insert([formData]);
+        .insert([{
+            name,
+            lab_id: labId,
+            amount,
+            status
+        }]);
 
     if (error) {
         alert('خطأ في إضافة العميل: ' + error.message);
         return;
     }
 
-    // Clear form
+    // Reset form
     document.getElementById('clientName').value = '';
     document.getElementById('labSelect').value = '';
     document.getElementById('amount').value = '';
     document.getElementById('status').value = 'pending';
 
+    await logAction('add_client', `تم إضافة عميل جديد: ${name}`);
     loadAdminClients();
-    alert('تم إضافة العميل بنجاح');
 }
 
-// Edit client
-async function editClient(clientId) {
-    const { data: client, error: fetchError } = await supabaseClient
+// Update client status
+async function updateClientStatus(clientId, newStatus) {
+    const { error } = await supabaseClient
         .from('clients')
-        .select('*')
-        .eq('id', clientId)
-        .single();
+        .update({ status: newStatus })
+        .eq('id', clientId);
 
-    if (fetchError) {
-        alert('خطأ في جلب بيانات العميل: ' + fetchError.message);
+    if (error) {
+        alert('خطأ في تحديث حالة العميل: ' + error.message);
         return;
     }
 
-    // Show edit form in modal
-    const modal = document.createElement('div');
-    modal.className = 'modal fade show';
-    modal.style.display = 'block';
-    modal.innerHTML = `
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">تعديل بيانات العميل</h5>
-                    <button type="button" class="btn-close" onclick="this.closest('.modal').remove()"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="editClientForm">
-                        <div class="mb-3">
-                            <label class="form-label">اسم العميل</label>
-                            <input type="text" class="form-control" id="editClientName" value="${client.name}" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">المختبر</label>
-                            <select class="form-select" id="editLabSelect" required></select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">المبلغ</label>
-                            <input type="number" class="form-control" id="editAmount" value="${client.amount}" required>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">الحالة</label>
-                            <select class="form-select" id="editStatus" required>
-                                <option value="pending" ${client.status === 'pending' ? 'selected' : ''}>قيد الانتظار</option>
-                                <option value="completed" ${client.status === 'completed' ? 'selected' : ''}>مكتمل</option>
-                                <option value="cancelled" ${client.status === 'cancelled' ? 'selected' : ''}>ملغي</option>
-                            </select>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" onclick="this.closest('.modal').remove()">إلغاء</button>
-                    <button type="button" class="btn btn-primary" onclick="saveClientEdit(${clientId})">حفظ التغييرات</button>
-                </div>
-            </div>
-        </div>
-    `;
-    document.body.appendChild(modal);
+    await logAction('update_status', `تم تحديث حالة العميل إلى: ${getStatusText(newStatus)}`);
+    loadAdminClients();
+}
 
-    // Load labs into select
-    const { data: labs } = await supabaseClient
-        .from('labs')
+// Load audit log
+async function loadAuditLog() {
+    const { data: logs, error } = await supabaseClient
+        .from('audit_log')
         .select('*')
-        .order('name');
+        .order('created_at', { ascending: false })
+        .limit(50);
 
-    const editLabSelect = document.getElementById('editLabSelect');
-    editLabSelect.innerHTML = '<option value="">اختر المختبر</option>';
-    
-    labs.forEach(lab => {
-        const option = document.createElement('option');
-        option.value = lab.id;
-        option.textContent = lab.name;
-        option.selected = lab.id === client.lab_id;
-        editLabSelect.appendChild(option);
+    if (error) {
+        console.error('Error loading audit log:', error);
+        return;
+    }
+
+    const tableBody = document.getElementById('auditLogTable');
+    tableBody.innerHTML = '';
+
+    logs.forEach(log => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>
+                <span class="badge ${getActionBadgeColor(log.action)}">
+                    ${getActionText(log.action)}
+                </span>
+            </td>
+            <td>${log.details}</td>
+            <td>${log.user_email || 'نظام'}</td>
+            <td>${new Date(log.created_at).toLocaleString('ar-SA')}</td>
+        `;
+        tableBody.appendChild(row);
     });
 }
 
-// Save client edit
-async function saveClientEdit(clientId) {
-    const formData = {
-        name: document.getElementById('editClientName').value,
-        lab_id: parseInt(document.getElementById('editLabSelect').value),
-        amount: parseInt(document.getElementById('editAmount').value),
-        status: document.getElementById('editStatus').value
-    };
-
+// Log action
+async function logAction(action, details) {
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    
     const { error } = await supabaseClient
-        .from('clients')
-        .update(formData)
-        .eq('id', clientId);
+        .from('audit_log')
+        .insert([{
+            action,
+            details,
+            user_email: user?.email
+        }]);
 
     if (error) {
-        alert('خطأ في تحديث بيانات العميل: ' + error.message);
-        return;
+        console.error('Error logging action:', error);
     }
 
-    document.querySelector('.modal').remove();
-    loadAdminClients();
-    alert('تم تحديث بيانات العميل بنجاح');
-}
-
-// Delete client
-async function deleteClient(clientId) {
-    if (!confirm('هل أنت متأكد من حذف هذا العميل؟')) {
-        return;
-    }
-
-    const { error } = await supabaseClient
-        .from('clients')
-        .delete()
-        .eq('id', clientId);
-
-    if (error) {
-        alert('خطأ في حذف العميل: ' + error.message);
-        return;
-    }
-
-    loadAdminClients();
-}
-
-// تحديث حالة العميل
-async function updateClientStatus(clientId, status) {
-    const { error } = await supabaseClient
-        .from('clients')
-        .update({ status })
-        .eq('id', clientId);
-
-    if (error) {
-        console.error('Error updating client status:', error);
-        return;
-    }
-
-    // تحديث البيانات
-    await loadAdminClients();
+    loadAuditLog();
 }
 
 // Helper functions
-function getStatusBadgeColor(status) {
-    switch (status) {
-        case 'completed': return 'success';
-        case 'pending': return 'warning';
-        case 'cancelled': return 'danger';
-        default: return 'secondary';
-    }
+function getStatusBadge(status) {
+    const colors = {
+        pending: 'bg-warning',
+        completed: 'bg-success',
+        cancelled: 'bg-danger'
+    };
+
+    const texts = {
+        pending: 'قيد الانتظار',
+        completed: 'مكتمل',
+        cancelled: 'ملغي'
+    };
+
+    return `<span class="badge ${colors[status]}">${texts[status]}</span>`;
 }
 
-function getStatusText(status) {
-    switch (status) {
-        case 'completed': return 'مكتمل';
-        case 'pending': return 'قيد الانتظار';
-        case 'cancelled': return 'ملغي';
-        default: return 'غير معروف';
-    }
+function getActionBadgeColor(action) {
+    const colors = {
+        add_lab: 'bg-success',
+        edit_lab: 'bg-primary',
+        delete_lab: 'bg-danger',
+        add_client: 'bg-success',
+        edit_client: 'bg-primary',
+        delete_client: 'bg-danger',
+        update_status: 'bg-warning'
+    };
+
+    return colors[action] || 'bg-secondary';
+}
+
+function getActionText(action) {
+    const texts = {
+        add_lab: 'إضافة مختبر',
+        edit_lab: 'تعديل مختبر',
+        delete_lab: 'حذف مختبر',
+        add_client: 'إضافة عميل',
+        edit_client: 'تعديل عميل',
+        delete_client: 'حذف عميل',
+        update_status: 'تحديث حالة'
+    };
+
+    return texts[action] || action;
 }
