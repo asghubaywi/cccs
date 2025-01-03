@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام إدارة المدفوعات</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="css/styles.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="#">نظام إدارة المدفوعات</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="admin.html">لوحة الإدارة</a>
+                    </li>
+                </ul>
+                <button class="btn btn-outline-primary" onclick="toggleTheme()">
+                    <i class="bi bi-moon-stars" id="themeIcon"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- الإحصائيات -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card stats-card bg-primary bg-gradient text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-subtitle mb-2">إجمالي العملاء</h6>
+                                <h2 id="totalClients" class="mb-0">0</h2>
+                            </div>
+                            <i class="bi bi-people fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card bg-success bg-gradient text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-subtitle mb-2">المدفوعات المكتملة</h6>
+                                <h2 id="completedPayments" class="mb-0">0</h2>
+                            </div>
+                            <i class="bi bi-check-circle fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card bg-warning bg-gradient">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-subtitle mb-2">قيد الانتظار</h6>
+                                <h2 id="pendingPayments" class="mb-0">0</h2>
+                            </div>
+                            <i class="bi bi-clock fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card bg-info bg-gradient text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h6 class="card-subtitle mb-2">إجمالي المبالغ</h6>
+                                <h2 id="totalAmount" class="mb-0">0</h2>
+                            </div>
+                            <i class="bi bi-currency-dollar fs-1"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- البحث -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title mb-3">البحث المتقدم</h5>
+                <form onsubmit="searchClients(event)">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">اسم العميل</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-person"></i></span>
+                                <input type="text" id="searchName" class="form-control" placeholder="ابحث بالاسم...">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">المختبر</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-building"></i></span>
+                                <select id="searchLab" class="form-select">
+                                    <option value="">جميع المختبرات</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">حالة الدفع</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-tag"></i></span>
+                                <select id="searchStatus" class="form-select">
+                                    <option value="">جميع الحالات</option>
+                                    <option value="pending">قيد الانتظار</option>
+                                    <option value="completed">مكتمل</option>
+                                    <option value="cancelled">ملغي</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">المبلغ</label>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-currency-dollar"></i></span>
+                                <input type="number" id="searchAmount" class="form-control" placeholder="المبلغ...">
+                                <span class="input-group-text">ريال</span>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-search"></i> بحث
+                            </button>
+                            <button type="reset" class="btn btn-secondary" onclick="resetSearch()">
+                                <i class="bi bi-x-circle"></i> إعادة تعيين
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- قائمة العملاء -->
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title mb-3">قائمة العملاء</h5>
+                <!-- أزرار تبديل العرض -->
+                <div class="mb-3">
+                    <button class="btn btn-outline-primary" onclick="toggleView('grid')">
+                        <i class="bi bi-grid"></i> عرض البطاقات
+                    </button>
+                    <button class="btn btn-outline-primary" onclick="toggleView('table')">
+                        <i class="bi bi-list"></i> عرض القائمة
+                    </button>
+                </div>
+
+                <!-- عرض البطاقات -->
+                <div id="gridView" class="row g-3">
+                    <!-- سيتم إضافة البطاقات هنا -->
+                </div>
+
+                <!-- عرض القائمة -->
+                <div id="tableView" class="table-responsive" style="display: none;">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>الاسم</th>
+                                <th>المختبر</th>
+                                <th>المبلغ</th>
+                                <th>الحالة</th>
+                                <th>التاريخ</th>
+                                <th>الإجراءات</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clientsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

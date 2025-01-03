@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة الإدارة - نظام إدارة المدفوعات</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="css/styles.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="index.html">نظام إدارة المدفوعات</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" href="#">لوحة الإدارة</a>
+                    </li>
+                </ul>
+                <button id="logoutBtn" class="btn btn-light" onclick="logout()" style="display: none;">
+                    تسجيل الخروج
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- نموذج تسجيل الدخول -->
+        <div id="loginForm" class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">تسجيل الدخول</h5>
+                <form onsubmit="login(event)">
+                    <div class="mb-3">
+                        <label class="form-label">البريد الإلكتروني</label>
+                        <input type="email" id="loginEmail" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">كلمة المرور</label>
+                        <input type="password" id="loginPassword" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">دخول</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- محتوى الإدارة -->
+        <div id="adminContent" style="display: none;">
+            <div class="row">
+                <!-- القائمة الجانبية -->
+                <div class="col-md-3">
+                    <div class="list-group mb-4">
+                        <a href="#labsSection" class="list-group-item list-group-item-action active" data-bs-toggle="list">
+                            <i class="bi bi-building"></i> إدارة المختبرات
+                        </a>
+                        <a href="#clientsSection" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                            <i class="bi bi-people"></i> إدارة العملاء
+                        </a>
+                        <a href="#auditLogSection" class="list-group-item list-group-item-action" data-bs-toggle="list">
+                            <i class="bi bi-clock-history"></i> سجل العمليات
+                        </a>
+                    </div>
+                </div>
+
+                <!-- المحتوى الرئيسي -->
+                <div class="col-md-9">
+                    <div class="tab-content">
+                        <!-- قسم المختبرات -->
+                        <div class="tab-pane fade show active" id="labsSection">
+                            <div class="card mb-4">
+                                <div class="card-body">
+                                    <h5 class="card-title">إضافة مختبر جديد</h5>
+                                    <form onsubmit="addLab(event)">
+                                        <div class="mb-3">
+                                            <label class="form-label">اسم المختبر</label>
+                                            <input type="text" id="labName" class="form-control" required>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="bi bi-plus-circle"></i> إضافة
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">قائمة المختبرات</h5>
+                                    <div class="table-responsive">
+                                        <table class="table">
+                                            <thead>
+                                                <tr>
+                                                    <th>الاسم</th>
+                                                    <th>تاريخ الإضافة</th>
+                                                    <th>عدد العملاء</th>
+                                                    <th>الإجراءات</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="labsTable"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- قسم العملاء -->
+                        <div class="tab-pane fade" id="clientsSection">
+                            <div class="card mb-4">
+                                <div class="card-body">
+                                    <h5 class="card-title">إضافة عميل جديد</h5>
+                                    <form onsubmit="addClient(event)">
+                                        <div class="row g-3">
+                                            <div class="col-md-6">
+                                                <label class="form-label">اسم العميل</label>
+                                                <input type="text" id="clientName" class="form-control" required>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">المختبر</label>
+                                                <select id="labSelect" class="form-select" required></select>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">المبلغ</label>
+                                                <div class="input-group">
+                                                    <input type="number" id="amount" class="form-control" required>
+                                                    <span class="input-group-text">ريال</span>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label">الحالة</label>
+                                                <select id="status" class="form-select" required>
+                                                    <option value="pending">قيد الانتظار</option>
+                                                    <option value="completed">مكتمل</option>
+                                                    <option value="cancelled">ملغي</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-12">
+                                                <button type="submit" class="btn btn-primary">
+                                                    <i class="bi bi-plus-circle"></i> إضافة
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">إدارة العملاء</h5>
+                                    <div class="table-responsive">
+                                        <table class="table">
+                                            <thead>
+                                                <tr>
+                                                    <th>الاسم</th>
+                                                    <th>المختبر</th>
+                                                    <th>المبلغ</th>
+                                                    <th>الحالة</th>
+                                                    <th>التاريخ</th>
+                                                    <th>الإجراءات</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="adminClientsTable"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- قسم التقارير -->
+                        <div class="tab-pane fade" id="reportsSection">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">التقارير</h5>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <div class="card bg-light">
+                                                <div class="card-body">
+                                                    <h6 class="card-title">تقرير المدفوعات الشهري</h6>
+                                                    <button class="btn btn-primary" onclick="generateMonthlyReport()">
+                                                        <i class="bi bi-download"></i> تحميل التقرير
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="card bg-light">
+                                                <div class="card-body">
+                                                    <h6 class="card-title">تقرير المختبرات</h6>
+                                                    <button class="btn btn-primary" onclick="generateLabsReport()">
+                                                        <i class="bi bi-download"></i> تحميل التقرير
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- سجل العمليات -->
+                        <div class="tab-pane fade" id="auditLogSection">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center mb-4">
+                                        <h5 class="card-title mb-0">سجل العمليات</h5>
+                                        <div class="btn-group">
+                                            <button class="btn btn-outline-secondary" onclick="filterAuditLog('today')">
+                                                <i class="bi bi-calendar-day"></i> اليوم
+                                            </button>
+                                            <button class="btn btn-outline-secondary" onclick="filterAuditLog('week')">
+                                                <i class="bi bi-calendar-week"></i> الأسبوع
+                                            </button>
+                                            <button class="btn btn-outline-secondary" onclick="filterAuditLog('month')">
+                                                <i class="bi bi-calendar-month"></i> الشهر
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table">
+                                            <thead>
+                                                <tr>
+                                                    <th>العملية</th>
+                                                    <th>التفاصيل</th>
+                                                    <th>المستخدم</th>
+                                                    <th>التاريخ</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="auditLogTable"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/admin.js"></script>
+</body>
+</html>
